@@ -13,13 +13,13 @@ export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
       <label
         ref={ref}
         className={cn(
-          "text-xs font-medium uppercase tracking-wider text-slate-300 select-none inline-flex items-center gap-1",
+          "text-xs font-medium uppercase tracking-wider text-muted-foreground select-none inline-flex items-center gap-1",
           className
         )}
         {...props}
       >
         {children}
-        {required && <span className="text-coral-500 text-sm font-semibold" aria-hidden="true">*</span>}
+        {required && <span className="text-destructive text-sm font-semibold" aria-hidden="true">*</span>}
       </label>
     );
   }

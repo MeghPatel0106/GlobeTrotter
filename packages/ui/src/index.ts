@@ -8,3 +8,4 @@ export * from "./components/card";
 export * from "./components/avatar-upload";
 export * from "./components/motion-wrapper";
 export * from "./components/route-thread";
+export * from "./components/theme-toggle";

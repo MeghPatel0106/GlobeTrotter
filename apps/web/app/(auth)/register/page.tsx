@@ -106,13 +106,13 @@ export default function RegisterPage() {
       <ErrorShake trigger={!!serverError} className="w-full">
         {/* Page Header (No Card) */}
         <div className="text-center space-y-2 mb-8">
-          <div className="mx-auto w-12 h-12 rounded-full bg-brass-500/10 border border-brass-500/30 flex items-center justify-center text-brass-400 mb-2">
+          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary mb-2">
             <Compass className="w-6 h-6" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-parchment-50">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
             Begin Your Voyage
           </h1>
-          <p className="text-slate-400 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
+          <p className="text-muted-foreground text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
             Create your explorer profile to plan, customize, and share
             multi-city journeys across the globe.
           </p>
@@ -122,7 +122,7 @@ export default function RegisterPage() {
           {/* Server Error Notice */}
           {serverError && (
             <div
-              className="p-3.5 rounded-[8px] bg-coral-500/10 border border-coral-500/40 text-coral-500 text-xs sm:text-sm leading-relaxed"
+              className="p-3.5 rounded-[8px] bg-destructive/10 border border-destructive/40 text-destructive text-xs sm:text-sm leading-relaxed"
               role="alert"
             >
               {serverError}
@@ -277,11 +277,11 @@ export default function RegisterPage() {
                 Create account
               </Button>
 
-              <p className="text-xs sm:text-sm text-slate-400 text-center pt-2">
+              <p className="text-xs sm:text-sm text-muted-foreground text-center pt-2">
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="font-medium text-brass-400 hover:text-brass-300 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brass-500 rounded"
+                  className="font-medium text-primary hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
                 >
                   Log in
                 </Link>

@@ -3,18 +3,21 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   Compass,
-  CheckCircle2,
-  ShieldCheck,
+  Plus,
+  Search,
   MapPin,
-  Mail,
-  Phone,
   Calendar,
   Sparkles,
   ArrowRight,
+  TrendingUp,
+  SlidersHorizontal,
+  RotateCcw,
+  Clock,
+  Navigation,
   Globe,
-  Users,
 } from "lucide-react";
 import {
   Card,
@@ -22,25 +25,91 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
+  CardFooter,
   Button,
+  MotionStaggerContainer,
+  MotionFadeRise,
 } from "@globetrotter/ui";
 import { useAuth } from "@/lib/auth-context";
+import { citiesApi, tripsApi, City, Trip } from "@/lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
+
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [sortBy, setSortBy] = React.useState<"popularity" | "cost" | "name">("popularity");
+  const [filterRegion, setFilterRegion] = React.useState<string>("all");
 
   React.useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isAuthLoading && !isAuthenticated) {
       router.push("/login");
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isAuthLoading, isAuthenticated, router]);
 
-  if (isLoading) {
+  // Fetch top destinations from real MongoDB
+  const {
+    data: topCities = [],
+    isLoading: isCitiesLoading,
+    isError: isCitiesError,
+    refetch: refetchCities,
+  } = useQuery({
+    queryKey: ["cities", "top"],
+    queryFn: () => citiesApi.getTop(6),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch user's recent trips from real MongoDB
+  const {
+    data: recentTrips = [],
+    isLoading: isTripsLoading,
+    isError: isTripsError,
+    refetch: refetchTrips,
+  } = useQuery({
+    queryKey: ["trips", "recent"],
+    queryFn: () => tripsApi.getUserTrips(3, "recent"),
+    enabled: isAuthenticated,
+    staleTime: 60 * 1000,
+  });
+
+  // Filtered and sorted cities
+  const displayedCities = React.useMemo(() => {
+    let result = [...topCities];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.country.toLowerCase().includes(q) ||
+          (c.description && c.description.toLowerCase().includes(q))
+      );
+    }
+
+    if (filterRegion !== "all") {
+      result = result.filter((c) => {
+        if (filterRegion === "asia") return ["Japan", "India", "Thailand"].includes(c.country);
+        if (filterRegion === "europe") return ["Italy", "Spain", "Iceland", "France"].includes(c.country);
+        if (filterRegion === "americas") return ["Mexico", "USA", "Argentina"].includes(c.country);
+        if (filterRegion === "africa") return ["South Africa", "Morocco"].includes(c.country);
+        return true;
+      });
+    }
+
+    result.sort((a, b) => {
+      if (sortBy === "popularity") return (b.popularityScore || 0) - (a.popularityScore || 0);
+      if (sortBy === "cost") return (a.costIndex || 0) - (b.costIndex || 0);
+      return a.name.localeCompare(b.name);
+    });
+
+    return result;
+  }, [topCities, searchQuery, sortBy, filterRegion]);
+
+  if (isAuthLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
-        <Compass className="w-8 h-8 text-brass-400 animate-spin" />
-        <span className="text-sm font-mono text-slate-400">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <Compass className="w-9 h-9 text-primary animate-spin" />
+        <span className="text-sm font-mono text-muted-foreground">
           Decrypting session journal...
         </span>
       </div>
@@ -49,257 +118,384 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
-  const formattedDate = new Date(user.createdAt).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
   return (
-    <div className="space-y-6">
-      {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-[14px] bg-ink-900 border border-slate-500/20 p-6 sm:p-8 shadow-xl">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sage-500/15 border border-sage-500/30 text-sage-400 text-xs font-mono">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>AUTHENTICATED · EXPLORER JOURNAL ACTIVE</span>
+    <div className="space-y-10 pb-12">
+      {/* 1. HERO / EDITORIAL BANNER */}
+      <section className="relative overflow-hidden rounded-[16px] bg-surface border border-border p-6 sm:p-10 shadow-sm">
+        {/* Subtle Decorative Background Compass */}
+        <div className="absolute right-0 bottom-0 opacity-[0.04] pointer-events-none transform translate-x-12 translate-y-12">
+          <Compass className="w-80 h-80 text-primary" />
+        </div>
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+          <div className="space-y-3 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-mono">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>EXPEDITION DISPATCH · ATLAS & INK</span>
             </div>
-            <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-parchment-50">
-              Welcome, {user.firstName}!
+
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
+              Where will your next journey take you,{" "}
+              <span className="text-primary underline decoration-primary/30 underline-offset-8">
+                {user.firstName}
+              </span>
+              ?
             </h1>
-            <p className="text-slate-400 text-sm max-w-xl leading-relaxed">
-              Your explorer journal is active. Access your customized multi-city
-              itineraries, community voyages, and curated destination guides.
+
+            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
+              Curate multi-city voyages, explore vetted cultural stops, and chronicle
+              day-by-day itineraries with personalized budgets.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link href="/search">
+          {/* Primary Action Button */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            <Link href="/trips/create" className="w-full sm:w-auto">
               <Button
                 variant="primary"
-                size="md"
-                className="gap-2 shadow-sm"
+                size="lg"
+                className="w-full sm:w-auto gap-2.5 shadow-md hover:shadow-lg font-semibold min-h-[48px]"
               >
-                <Compass className="w-4 h-4 text-ink-950" />
+                <Plus className="w-5 h-5" />
+                <span>Plan a Trip</span>
+              </Button>
+            </Link>
+
+            <Link href="/search" className="w-full sm:w-auto">
+              <Button
+                variant="secondary"
+                size="lg"
+                className="w-full sm:w-auto gap-2 border-border hover:border-primary/40 min-h-[48px]"
+              >
+                <Compass className="w-4 h-4 text-primary" />
                 <span>Explore Cities</span>
               </Button>
             </Link>
-            <Link href="/trips/mine">
-              <Button
-                variant="secondary"
-                size="md"
-                className="gap-2 border-slate-500/25 hover:border-slate-500/40"
-              >
-                <span>My Trips</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
           </div>
         </div>
+      </section>
 
-        {/* Subtle Decorative Cartography Line */}
-        <div className="absolute right-0 bottom-0 opacity-5 pointer-events-none transform translate-x-12 translate-y-12">
-          <Compass className="w-64 h-64 text-brass-400" />
+      {/* 2. PREVIOUS / ONGOING EXPEDITIONS SECTION */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-4 border-b border-border pb-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-primary" />
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+              Your Expeditions
+            </h2>
+          </div>
+          {recentTrips.length > 0 && (
+            <Link
+              href="/trips/mine"
+              className="text-xs font-mono text-primary hover:underline flex items-center gap-1"
+            >
+              <span>View all trips</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
         </div>
-      </div>
 
-      {/* Grid: Profile Details + System Verification Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: User Profile Details */}
-        <Card className="lg:col-span-2 border-slate-500/20 bg-ink-900">
-          <CardHeader className="border-b border-slate-500/10 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-brass-500/60 bg-ink-800 flex items-center justify-center text-brass-400 font-serif text-2xl font-bold shadow-md shrink-0">
-                {user.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={user.photoUrl}
-                    alt={user.firstName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span>
-                    {user.firstName?.charAt(0)}
-                    {user.lastName?.charAt(0)}
-                  </span>
-                )}
+        {/* Trips Data State */}
+        {isTripsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className="h-44 rounded-[14px] bg-surface-subtle border border-border animate-pulse p-6 space-y-3"
+              >
+                <div className="h-4 w-2/3 bg-surface-elevated rounded" />
+                <div className="h-3 w-1/2 bg-surface-elevated rounded" />
+                <div className="h-3 w-4/5 bg-surface-elevated rounded pt-4" />
               </div>
-              <div className="min-w-0">
-                <CardTitle className="text-xl truncate">
-                  {user.firstName} {user.lastName}
-                </CardTitle>
-                <CardDescription className="font-mono text-xs text-brass-400">
-                  @{user.username} · Role: {user.role}
-                </CardDescription>
+            ))}
+          </div>
+        ) : isTripsError ? (
+          <div className="p-6 rounded-[14px] bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-center justify-between gap-4">
+            <span>Failed to load your expedition logs from MongoDB.</span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => refetchTrips()}
+              className="text-xs gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Retry
+            </Button>
+          </div>
+        ) : recentTrips.length === 0 ? (
+          /* Empty State for New Users */
+          <Card className="border-border bg-surface text-center py-10 px-6">
+            <CardContent className="max-w-md mx-auto flex flex-col items-center gap-3.5">
+              <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
+                <Navigation className="w-6 h-6" />
               </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="pt-6 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center gap-2.5 text-slate-300 p-3 rounded-[8px] bg-ink-850 border border-slate-500/10">
-                <Mail className="w-4 h-4 text-brass-500/80 shrink-0" />
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-mono text-slate-500 uppercase">
-                    Email
-                  </span>
-                  <span className="truncate font-medium">{user.email}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5 text-slate-300 p-3 rounded-[8px] bg-ink-850 border border-slate-500/10">
-                <Phone className="w-4 h-4 text-brass-500/80 shrink-0" />
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-mono text-slate-500 uppercase">
-                    Phone
-                  </span>
-                  <span className="truncate font-medium">
-                    {user.phone || "Not specified"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5 text-slate-300 p-3 rounded-[8px] bg-ink-850 border border-slate-500/10">
-                <MapPin className="w-4 h-4 text-brass-500/80 shrink-0" />
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-mono text-slate-500 uppercase">
-                    Home Base
-                  </span>
-                  <span className="truncate font-medium">
-                    {[user.city, user.country].filter(Boolean).join(", ") ||
-                      "Location not set"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5 text-slate-300 p-3 rounded-[8px] bg-ink-850 border border-slate-500/10">
-                <Calendar className="w-4 h-4 text-brass-500/80 shrink-0" />
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-mono text-slate-500 uppercase">
-                    Member Since
-                  </span>
-                  <span className="font-mono text-xs font-medium">
-                    {formattedDate}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {user.additionalInfo && (
-              <div className="p-4 rounded-[8px] bg-ink-850 border border-slate-500/15">
-                <span className="text-[11px] font-mono text-slate-400 uppercase block mb-1">
-                  Traveler Bio / Travel Style
-                </span>
-                <p className="text-sm text-parchment-50 leading-relaxed italic break-words">
-                  &ldquo;{user.additionalInfo}&rdquo;
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold text-foreground">
+                  No trips yet — plan your first one
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Start mapping out your next destination, organize activities, and watch your daily budget come together.
                 </p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <Link href="/trips/create" className="pt-2">
+                <Button variant="primary" size="md" className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  <span>Start Your First Journey</span>
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          /* Recent Trips Grid */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {recentTrips.map((trip) => {
+              const startFormatted = trip.startDate
+                ? new Date(trip.startDate).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "TBD";
+              const endFormatted = trip.endDate
+                ? new Date(trip.endDate).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "";
+              const stopCount = trip.stops?.length || 0;
+              const firstStop = trip.stops?.[0];
 
-        {/* Right: Account Status & Expedition Readiness */}
-        <Card className="border-slate-500/20 bg-ink-900 flex flex-col justify-between">
-          <CardHeader className="pb-3 border-b border-slate-500/10">
-            <div className="flex items-center gap-2 text-brass-400">
-              <ShieldCheck className="w-5 h-5" />
-              <CardTitle className="text-base font-serif">
-                Account & Expedition Status
-              </CardTitle>
-            </div>
-            <CardDescription className="text-xs">
-              Profile credentials and security certificates active.
-            </CardDescription>
-          </CardHeader>
+              return (
+                <Card
+                  key={trip.id}
+                  className="border-border bg-surface hover:border-primary/50 transition-colors flex flex-col justify-between group"
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between gap-2 text-xs font-mono text-muted-foreground mb-1">
+                      <span className="flex items-center gap-1 text-primary font-medium">
+                        <MapPin className="w-3.5 h-3.5" />
+                        {firstStop ? `${firstStop.cityName}, ${firstStop.country}` : "Multi-city"}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-surface-subtle border border-border text-[10px] uppercase font-mono text-primary">
+                        {trip.status}
+                      </span>
+                    </div>
 
-          <CardContent className="pt-4 space-y-3 text-xs flex-1">
-            <div className="flex items-start gap-2 text-slate-300">
-              <CheckCircle2 className="w-4 h-4 text-sage-500 shrink-0 mt-0.5" />
-              <span>Verified Explorer Profile & Credentials</span>
-            </div>
-            <div className="flex items-start gap-2 text-slate-300">
-              <CheckCircle2 className="w-4 h-4 text-sage-500 shrink-0 mt-0.5" />
-              <span>Encrypted Session & Token Rotation Active</span>
-            </div>
-            <div className="flex items-start gap-2 text-slate-300">
-              <CheckCircle2 className="w-4 h-4 text-sage-500 shrink-0 mt-0.5" />
-              <span>Multi-City Route Planner Engine Ready</span>
-            </div>
-            <div className="flex items-start gap-2 text-slate-300">
-              <CheckCircle2 className="w-4 h-4 text-sage-500 shrink-0 mt-0.5" />
-              <span>Community Travel Logbook Access Granted</span>
-            </div>
-            <div className="flex items-start gap-2 text-slate-300">
-              <CheckCircle2 className="w-4 h-4 text-sage-500 shrink-0 mt-0.5" />
-              <span>Atlas & Ink Typography System Synchronized</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                    <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-1">
+                      {trip.name}
+                    </CardTitle>
 
-      {/* Discovery & Expedition Shortcuts */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link
-          href="/trips/mine"
-          className="group p-5 rounded-[14px] bg-ink-900 border border-slate-500/20 hover:border-brass-500/50 transition-colors flex flex-col justify-between gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500"
-        >
-          <div className="flex items-center justify-between">
-            <div className="w-9 h-9 rounded-lg bg-ink-800 border border-slate-500/20 flex items-center justify-center text-brass-400 group-hover:border-brass-500/40">
-              <MapPin className="w-4 h-4" />
-            </div>
-            <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-brass-400 group-hover:translate-x-0.5 transition-all" />
+                    <CardDescription className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>
+                        {startFormatted} {endFormatted ? `– ${endFormatted}` : ""}
+                      </span>
+                    </CardDescription>
+                  </CardHeader>
+
+                  <CardFooter className="pt-3 border-t border-border flex items-center justify-between text-xs">
+                    <span className="font-mono text-muted-foreground">
+                      {stopCount} {stopCount === 1 ? "Stop" : "Stops"}
+                    </span>
+                    <Link
+                      href={`/trips/mine`}
+                      className="text-primary hover:underline font-medium flex items-center gap-1 p-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
+                    >
+                      <span>Open Journal</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </CardFooter>
+                </Card>
+              );
+            })}
           </div>
-          <div>
-            <h2 className="font-serif font-semibold text-base text-parchment-50">
-              My Expeditions
+        )}
+      </section>
+
+      {/* 3. TOP REGIONAL SELECTIONS & DISCOVERY SECTION */}
+      <section className="space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+              Top Regional Selections
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Review planned itineraries, active stops, and archived journey logs.
-            </p>
           </div>
-        </Link>
+          <span className="text-xs font-mono text-muted-foreground">
+            Curated historical & cultural hubs
+          </span>
+        </div>
 
-        <Link
-          href="/search"
-          className="group p-5 rounded-[14px] bg-ink-900 border border-slate-500/20 hover:border-brass-500/50 transition-colors flex flex-col justify-between gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500"
-        >
-          <div className="flex items-center justify-between">
-            <div className="w-9 h-9 rounded-lg bg-ink-800 border border-slate-500/20 flex items-center justify-center text-brass-400 group-hover:border-brass-500/40">
-              <Globe className="w-4 h-4" />
+        {/* Search & Filter Controls Toolbar */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          {/* Live Search Input */}
+          <div className="sm:col-span-6 relative">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+              <Search className="w-4 h-4" />
             </div>
-            <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-brass-400 group-hover:translate-x-0.5 transition-all" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Filter by city, country, or landmark..."
+              aria-label="Filter top destinations"
+              className="w-full h-10 pl-10 pr-4 rounded-[8px] bg-input-bg border border-input-border text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
+            />
           </div>
-          <div>
-            <h2 className="font-serif font-semibold text-base text-parchment-50">
-              Explore Destinations
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Discover cultural landmarks, culinary spots, and city highlights.
-            </p>
-          </div>
-        </Link>
 
-        <Link
-          href="/community"
-          className="group p-5 rounded-[14px] bg-ink-900 border border-slate-500/20 hover:border-brass-500/50 transition-colors flex flex-col justify-between gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500"
-        >
-          <div className="flex items-center justify-between">
-            <div className="w-9 h-9 rounded-lg bg-ink-800 border border-slate-500/20 flex items-center justify-center text-brass-400 group-hover:border-brass-500/40">
-              <Users className="w-4 h-4" />
-            </div>
-            <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-brass-400 group-hover:translate-x-0.5 transition-all" />
+          {/* Region Filter */}
+          <div className="sm:col-span-3">
+            <select
+              value={filterRegion}
+              onChange={(e) => setFilterRegion(e.target.value)}
+              aria-label="Filter by region"
+              className="w-full h-10 px-3 rounded-[8px] bg-input-bg border border-input-border text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary transition-colors cursor-pointer"
+            >
+              <option value="all">All Regions</option>
+              <option value="asia">Asia & Pacific</option>
+              <option value="europe">Europe</option>
+              <option value="americas">Americas</option>
+              <option value="africa">Africa</option>
+            </select>
           </div>
-          <div>
-            <h2 className="font-serif font-semibold text-base text-parchment-50">
-              Community Logbook
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Read travel field notes and route advice from fellow wanderers.
-            </p>
+
+          {/* Sort By */}
+          <div className="sm:col-span-3">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              aria-label="Sort destinations"
+              className="w-full h-10 px-3 rounded-[8px] bg-input-bg border border-input-border text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary transition-colors cursor-pointer"
+            >
+              <option value="popularity">Sort by: Popularity</option>
+              <option value="cost">Sort by: Budget Level</option>
+              <option value="name">Sort by: Name (A-Z)</option>
+            </select>
           </div>
-        </Link>
-      </div>
+        </div>
+
+        {/* City Cards Grid with Staggered Motion */}
+        {isCitiesLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <div
+                key={n}
+                className="h-80 rounded-[14px] bg-surface-subtle border border-border animate-pulse flex flex-col justify-between p-5"
+              >
+                <div className="h-32 bg-surface-elevated rounded-lg mb-3" />
+                <div className="h-4 w-3/4 bg-surface-elevated rounded mb-2" />
+                <div className="h-3 w-1/2 bg-surface-elevated rounded" />
+              </div>
+            ))}
+          </div>
+        ) : isCitiesError ? (
+          <div className="p-6 rounded-[14px] bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-center justify-between gap-4">
+            <span>Failed to load curated destinations from MongoDB database.</span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => refetchCities()}
+              className="text-xs gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Retry
+            </Button>
+          </div>
+        ) : displayedCities.length === 0 ? (
+          <Card className="border-border bg-surface text-center py-10 px-6">
+            <CardContent className="max-w-md mx-auto flex flex-col items-center gap-3">
+              <Compass className="w-8 h-8 text-primary/60" />
+              <h3 className="text-base font-semibold text-foreground">
+                No matching destinations found
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Try searching for a different region or clearing the filter query.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("");
+                  setFilterRegion("all");
+                }}
+                className="text-xs mt-1"
+              >
+                Reset Filters
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <MotionStaggerContainer
+            staggerDelay={0.06}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            {displayedCities.map((city) => {
+              const costBadges = Array.from({ length: city.costIndex || 3 }, () => "$").join("");
+
+              return (
+                <MotionFadeRise key={city.id}>
+                  <Card className="overflow-hidden border-border bg-surface hover:border-primary/40 transition-all duration-200 flex flex-col justify-between h-full group">
+                    {/* Destination Visual Banner */}
+                    {city.imageUrl && (
+                      <div className="relative h-44 w-full overflow-hidden bg-surface-subtle">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={city.imageUrl}
+                          alt={city.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs border border-white/20 text-white text-[11px] font-mono font-medium">
+                          {city.popularityScore}% Popularity
+                        </div>
+                        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-white text-xs font-mono font-semibold drop-shadow-sm">
+                          <MapPin className="w-3.5 h-3.5 text-primary" />
+                          <span>{city.country}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <CardHeader className="p-5 pb-3">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <CardTitle className="text-xl group-hover:text-primary transition-colors">
+                          {city.name}
+                        </CardTitle>
+                        <span className="font-mono text-xs text-primary font-bold">
+                          {costBadges}
+                        </span>
+                      </div>
+
+                      <CardDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {city.description}
+                      </CardDescription>
+                    </CardHeader>
+
+                    <CardFooter className="p-5 pt-2 border-t border-border flex items-center justify-between text-xs">
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        Atlas & Ink Pick
+                      </span>
+
+                      <Link
+                        href={`/trips/create?cityId=${city.id}&cityName=${encodeURIComponent(city.name)}&country=${encodeURIComponent(city.country)}`}
+                        className="w-auto"
+                      >
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="gap-1.5 text-xs h-9 px-3"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Plan Voyage</span>
+                        </Button>
+                      </Link>
+                    </CardFooter>
+                  </Card>
+                </MotionFadeRise>
+              );
+            })}
+          </MotionStaggerContainer>
+        )}
+      </section>
     </div>
   );
 }

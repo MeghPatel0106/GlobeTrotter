@@ -17,14 +17,14 @@ export function RouteThreadDecoration({ className }: RouteThreadDecorationProps)
       )}
       aria-hidden="true"
     >
-      <div className="h-[1px] flex-1 border-t border-dashed border-brass-500/40" />
-      <div className="mx-3 flex items-center gap-2 px-3 py-1 rounded-full border border-brass-500/30 bg-ink-900 text-brass-400 shrink-0">
-        <Compass className="w-3.5 h-3.5 text-brass-400 shrink-0 animate-[spin_20s_linear_infinite]" />
-        <span className="font-mono text-[10px] tracking-wider uppercase text-slate-400 whitespace-nowrap">
+      <div className="h-[1px] flex-1 border-t border-dashed border-primary/40" />
+      <div className="mx-3 flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-surface text-primary shrink-0 shadow-sm">
+        <Compass className="w-3.5 h-3.5 text-primary shrink-0 animate-[spin_20s_linear_infinite]" />
+        <span className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground whitespace-nowrap">
           JOURNAL · LOG
         </span>
       </div>
-      <div className="h-[1px] flex-1 border-t border-dashed border-brass-500/40" />
+      <div className="h-[1px] flex-1 border-t border-dashed border-primary/40" />
     </div>
   );
 }

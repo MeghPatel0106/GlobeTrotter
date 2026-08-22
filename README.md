@@ -102,8 +102,7 @@ GlobeTrotter avoids generic SaaS/AI aesthetics in favor of a bespoke **travel-jo
 - **Warm Light Mode**: Refined `#F6F1E4` (`parchment-50`) background with high-contrast slate ink.
 - **Restrained Brass Accents**: Primary action token `#C9973F` (`brass-500`) and hover token `#DDB35F` (`brass-400`).
 - **Typography Hierarchy**:
-  - **Fraunces**: Editorial serif for headlines, journal stamps, and screen titles.
-  - **Inter**: Clean sans-serif workhorse for inputs, controls, and body copy.
+  - **Inter**: Clean, modern sans-serif workhorse for headlines, navigation, cards, controls, and body copy.
   - **JetBrains Mono**: Monospace precision for coordinates, budgets, and timestamps.
 - **Route Thread Signature**: Dashed brass connecting line with centered compass log badge.
 - **Zero-Defect Standards**: Tested down to **320px width**, zero horizontal scroll, minimum 44×44px touch targets.

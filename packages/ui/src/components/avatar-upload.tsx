@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Camera, Loader2, RotateCcw, User } from "lucide-react";
+import { Camera, Loader2, RotateCcw } from "lucide-react";
 import { cn } from "../lib/utils";
 
 export interface AvatarUploadProps {
@@ -107,11 +107,11 @@ export function AvatarUpload({
           disabled={disabled || isUploading}
           style={{ width: 96, height: 96 }}
           className={cn(
-            "relative w-24 h-24 rounded-full overflow-hidden flex flex-col items-center justify-center transition-colors border-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950 shrink-0",
+            "relative w-24 h-24 rounded-full overflow-hidden flex flex-col items-center justify-center transition-colors border-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 shrink-0",
             previewUrl
-              ? "border-brass-500 hover:border-brass-400 shadow-md"
-              : "border-dashed border-slate-500/40 bg-ink-850 hover:border-brass-500/60 hover:bg-ink-800",
-            uploadError && "border-coral-500",
+              ? "border-primary hover:border-primary-hover shadow-md"
+              : "border-dashed border-border bg-surface-subtle hover:border-primary hover:bg-surface-hover",
+            uploadError && "border-destructive",
             disabled && "opacity-50 cursor-not-allowed"
           )}
           aria-label={previewUrl ? "Change profile photo" : "Upload profile photo"}
@@ -128,20 +128,20 @@ export function AvatarUpload({
               }}
             />
           ) : initials ? (
-            <span className="font-serif text-2xl font-bold text-brass-400 select-none">
+            <span className="font-bold text-2xl text-primary select-none tracking-tight">
               {initials}
             </span>
           ) : (
-            <div className="flex flex-col items-center justify-center gap-1 text-slate-400">
-              <Camera className="w-6 h-6 text-brass-400" aria-hidden="true" />
-              <span className="text-[10px] font-medium text-slate-300">Add Photo</span>
+            <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground">
+              <Camera className="w-6 h-6 text-primary" aria-hidden="true" />
+              <span className="text-[10px] font-medium text-foreground">Add Photo</span>
             </div>
           )}
 
           {/* Uploading progress spinner */}
           {isUploading && (
-            <div className="absolute inset-0 bg-ink-950/85 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-brass-400" />
+            <div className="absolute inset-0 bg-background/85 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           )}
         </button>
@@ -150,18 +150,18 @@ export function AvatarUpload({
         <div
           onClick={handleTrigger}
           style={{ width: 32, height: 32 }}
-          className="absolute -bottom-0.5 -right-0.5 w-8 h-8 rounded-full bg-brass-500 text-ink-950 flex items-center justify-center shadow-md border-2 border-ink-950 cursor-pointer hover:bg-brass-400 transition-colors"
+          className="absolute -bottom-0.5 -right-0.5 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md border-2 border-background cursor-pointer hover:bg-primary-hover transition-colors"
           aria-hidden="true"
         >
-          <Camera className="w-4 h-4 text-ink-950" />
+          <Camera className="w-4 h-4 text-primary-foreground" />
         </div>
       </div>
 
       <div className="text-center space-y-0.5">
-        <span className="text-xs text-parchment-50 font-medium block">
+        <span className="text-xs text-foreground font-medium block">
           Profile Photo
         </span>
-        <span className="text-[11px] font-mono text-slate-400 block">
+        <span className="text-[11px] font-mono text-muted-foreground block">
           JPG, PNG, or WebP (max 5MB)
         </span>
       </div>
@@ -170,7 +170,7 @@ export function AvatarUpload({
         <button
           type="button"
           onClick={handleTrigger}
-          className="text-xs text-coral-500 flex items-center gap-1 hover:underline cursor-pointer"
+          className="text-xs text-destructive flex items-center gap-1 hover:underline cursor-pointer"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>{uploadError}</span>

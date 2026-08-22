@@ -6,10 +6,7 @@ import {
   Search,
   MapPin,
   Compass,
-  Navigation,
-  Sparkles,
   ArrowRight,
-  Filter,
 } from "lucide-react";
 import {
   Card,
@@ -101,15 +98,15 @@ export default function SearchPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="border-b border-slate-500/15 pb-5">
-        <div className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-brass-400 mb-1">
+      <div className="border-b border-border pb-5">
+        <div className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-primary mb-1">
           <Compass className="w-3.5 h-3.5" />
           <span>Cartography & Discovery</span>
         </div>
-        <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-parchment-50">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-foreground">
           Explore Destinations
         </h1>
-        <p className="text-slate-400 text-sm mt-1 max-w-2xl">
+        <p className="text-muted-foreground text-sm mt-1 max-w-2xl">
           Search historic cities, cultural highlights, and multi-city route stops
           for your next custom itinerary.
         </p>
@@ -118,7 +115,7 @@ export default function SearchPage() {
       {/* Search Input Bar & Filter Pills */}
       <div className="space-y-3">
         <div className="relative">
-          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
             <Search className="w-5 h-5" />
           </div>
           <input
@@ -127,7 +124,7 @@ export default function SearchPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search destination, country, or keyword (e.g. Kyoto, Tuscany, temples)..."
             aria-label="Search destinations"
-            className="w-full h-11 pl-11 pr-4 rounded-[8px] bg-ink-900 border border-slate-500/25 text-sm text-parchment-50 placeholder:text-slate-500 focus:outline-none focus:border-brass-500 focus:ring-2 focus:ring-brass-500/20 transition-colors"
+            className="w-full h-11 pl-11 pr-4 rounded-[8px] bg-input-bg border border-input-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
           />
         </div>
 
@@ -141,10 +138,10 @@ export default function SearchPage() {
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`px-3.5 py-1.5 rounded-[8px] text-xs font-medium transition-colors cursor-pointer min-h-[38px] whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 ${
+                className={`px-3.5 py-1.5 rounded-[8px] text-xs font-medium transition-colors cursor-pointer min-h-[38px] whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                   isActive
-                    ? "bg-ink-800 text-brass-400 font-semibold border border-brass-500/30 shadow-xs"
-                    : "text-slate-400 hover:text-parchment-50 hover:bg-ink-850 border border-transparent"
+                    ? "bg-surface-elevated text-primary font-semibold border border-primary/30 shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface-hover border border-transparent"
                 }`}
               >
                 {cat.label}
@@ -160,36 +157,36 @@ export default function SearchPage() {
           {filteredDestinations.map((dest) => (
             <Card
               key={dest.name}
-              className="border-slate-500/20 bg-ink-900 hover:border-slate-500/40 transition-colors flex flex-col justify-between"
+              className="border-border bg-surface hover:border-primary/40 transition-colors flex flex-col justify-between"
             >
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between gap-2 text-xs font-mono text-slate-400 mb-1">
-                  <span className="flex items-center gap-1 text-brass-400 font-medium">
+                <div className="flex items-center justify-between gap-2 text-xs font-mono text-muted-foreground mb-1">
+                  <span className="flex items-center gap-1 text-primary font-medium">
                     <MapPin className="w-3.5 h-3.5" />
                     {dest.region}
                   </span>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-muted-foreground">
                     {dest.coordinates}
                   </span>
                 </div>
-                <CardTitle className="text-xl">{dest.name}</CardTitle>
-                <CardDescription className="text-xs text-slate-400 line-clamp-3 mt-1.5">
+                <CardTitle className="text-xl text-foreground">{dest.name}</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground line-clamp-3 mt-1.5">
                   {dest.description}
                 </CardDescription>
               </CardHeader>
 
-              <CardFooter className="pt-3 border-t border-slate-500/10 flex items-center justify-between text-xs">
+              <CardFooter className="pt-3 border-t border-border flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full bg-ink-800 border border-slate-500/20 text-[11px] font-mono text-slate-300">
+                  <span className="px-2 py-0.5 rounded-full bg-surface-subtle border border-border text-[11px] font-mono text-foreground">
                     {dest.tag}
                   </span>
-                  <span className="text-[11px] font-mono text-slate-500">
+                  <span className="text-[11px] font-mono text-muted-foreground">
                     {dest.duration}
                   </span>
                 </div>
                 <Link
                   href="/trips/mine"
-                  className="text-brass-400 hover:text-brass-300 font-medium flex items-center gap-1 p-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brass-500 rounded"
+                  className="text-primary hover:underline font-medium flex items-center gap-1 p-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
                 >
                   <span>Add to Trip</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -199,13 +196,13 @@ export default function SearchPage() {
           ))}
         </div>
       ) : (
-        <Card className="border-slate-500/20 bg-ink-900 text-center py-12 px-6">
+        <Card className="border-border bg-surface text-center py-12 px-6">
           <CardContent className="max-w-md mx-auto flex flex-col items-center gap-3">
-            <Compass className="w-10 h-10 text-brass-500/60" />
-            <h2 className="font-serif text-lg font-semibold text-parchment-50">
+            <Compass className="w-10 h-10 text-primary/60" />
+            <h2 className="text-lg font-semibold text-foreground">
               No matching destinations found
             </h2>
-            <p className="text-slate-400 text-xs sm:text-sm">
+            <p className="text-muted-foreground text-xs sm:text-sm">
               We couldn&apos;t find any destination matching &ldquo;{searchQuery}&rdquo;.
               Try searching for a different city or clearing the search bar.
             </p>

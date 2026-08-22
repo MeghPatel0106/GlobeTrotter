@@ -1,18 +1,12 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  weight: ["500", "600", "700"],
-  display: "swap",
-});
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -25,7 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "GlobeTrotter — Personalized Multi-City Travel Planning",
   description:
-    "An editorial travel-journal and intelligent multi-city itinerary builder for explorers, groups, and solo travelers.",
+    "An intelligent multi-city itinerary builder and route planning platform for explorers, groups, and solo travelers.",
 };
 
 export default function RootLayout({
@@ -36,9 +30,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable} dark`}
+      suppressHydrationWarning
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
-      <body className="bg-ink-950 text-parchment-50 font-sans antialiased min-h-screen flex flex-col">
+      <body className="bg-background text-foreground font-sans antialiased min-h-screen flex flex-col selection:bg-primary/25 selection:text-primary">
         <Providers>{children}</Providers>
       </body>
     </html>

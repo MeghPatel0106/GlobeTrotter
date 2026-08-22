@@ -19,6 +19,81 @@ export interface User {
   createdAt: string;
 }
 
+export interface City {
+  id: string;
+  name: string;
+  country: string;
+  costIndex?: number;
+  popularityScore?: number;
+  imageUrl?: string;
+  description?: string;
+  createdAt?: string;
+}
+
+export interface Activity {
+  id: string;
+  cityId: string;
+  name: string;
+  category?: string;
+  cost?: number;
+  durationMinutes?: number;
+  description?: string;
+  imageUrl?: string;
+  rating?: number;
+}
+
+export interface ItineraryItem {
+  id?: string;
+  activityId?: string;
+  activityName?: string;
+  dayNumber: number;
+  startTime?: string;
+  orderIndex: number;
+  costOverride?: number;
+}
+
+export interface Stop {
+  id?: string;
+  cityId?: string;
+  cityName: string;
+  country: string;
+  orderIndex: number;
+  startDate?: string;
+  endDate?: string;
+  sectionBudget?: number;
+  notes?: string;
+  itineraryItems: ItineraryItem[];
+}
+
+export interface Trip {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  coverPhotoUrl?: string;
+  startDate?: string;
+  endDate?: string;
+  status: string;
+  visibility: string;
+  totalBudgetEstimate?: number;
+  stops: Stop[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTripInput {
+  name: string;
+  startDate: string;
+  endDate: string;
+  cityId?: string;
+  cityName: string;
+  country: string;
+  sectionBudget?: number;
+  notes?: string;
+  description?: string;
+  coverPhotoUrl?: string;
+}
+
 export interface AuthResponse {
   token: string;
   refreshToken: string;
@@ -159,7 +234,6 @@ export async function apiFetch<T = any>(
           errorMessage = errorData.message;
         }
       } catch {
-        // Fallback to status text
         errorMessage = response.statusText || errorMessage;
       }
       throw new Error(errorMessage);
@@ -202,4 +276,24 @@ export const authApi = {
 
     return res.url;
   },
+};
+
+export const citiesApi = {
+  getTop: (limit = 5) => apiFetch<City[]>(`/cities/top?limit=${limit}`),
+  search: (query: string, limit = 10) =>
+    apiFetch<City[]>(`/cities/search?q=${encodeURIComponent(query)}&limit=${limit}`),
+  getById: (id: string) => apiFetch<City>(`/cities/${id}`),
+  getActivities: (cityId: string, top = 6) =>
+    apiFetch<Activity[]>(`/cities/${cityId}/activities?top=${top}`),
+};
+
+export const tripsApi = {
+  getUserTrips: (limit = 10, sort = "recent") =>
+    apiFetch<Trip[]>(`/trips?limit=${limit}&sort=${sort}`),
+  getById: (id: string) => apiFetch<Trip>(`/trips/${id}`),
+  createTrip: (data: CreateTripInput) =>
+    apiFetch<Trip>("/trips", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };

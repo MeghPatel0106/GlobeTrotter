@@ -30,19 +30,19 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium transition-all duration-160 cursor-pointer select-none rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]";
+      "inline-flex items-center justify-center font-medium transition-all duration-160 cursor-pointer select-none rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]";
 
     const variants = {
       primary:
-        "bg-brass-500 text-ink-950 hover:bg-brass-400 font-semibold shadow-sm hover:shadow-[0_4px_16px_rgba(201,151,63,0.25)]",
+        "bg-brass-500 text-ink-950 hover:bg-brass-400 font-semibold shadow-xs hover:shadow-md",
       secondary:
-        "bg-ink-800 text-parchment-50 hover:bg-ink-900 border border-slate-500/20 hover:border-slate-500/40",
+        "bg-surface text-foreground hover:bg-surface-hover border border-border hover:border-brass-500/40 shadow-xs",
       outline:
         "border border-brass-500/60 text-brass-500 hover:bg-brass-500/10 hover:border-brass-500",
       ghost:
-        "text-slate-300 hover:text-parchment-50 hover:bg-ink-800/60",
+        "text-muted-foreground hover:text-foreground hover:bg-surface-hover",
       destructive:
-        "bg-coral-500 text-white hover:bg-coral-500/90 shadow-sm",
+        "bg-destructive text-white hover:opacity-90 shadow-xs",
     };
 
     const sizes = {

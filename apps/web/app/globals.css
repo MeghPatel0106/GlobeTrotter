@@ -4,32 +4,44 @@
 @source "../app";
 @source "./";
 
-@layer theme {
-  :root {
-    --color-ink-950: #0E1420;
-    --color-ink-900: #141C2C;
-    --color-ink-850: #182337;
-    --color-ink-800: #1E2A3F;
-    --color-parchment-50: #F6F1E4;
-    --color-brass-500: #C9973F;
-    --color-brass-400: #DDB35F;
-    --color-coral-500: #E8674A;
-    --color-sage-500: #7FA687;
-    --color-slate-300: #B7C0CE;
-    --color-slate-400: #93A0B3;
-    --color-slate-500: #7C8798;
+/* ==========================================================================
+   Centralized Theme Tokens — Modern Clean Sans-Serif System
+   Dark Mode (Default): #0E1420 / #141C2C / #C9973F / #F6F1E4
+   Light Mode (Warm Paper Edition): #F4EFE6 / #FFFFFF / #C9973F / #0E1420
+   Typography: Inter (Clean, Modern Sans-Serif)
+   ========================================================================== */
 
-    --font-serif: var(--font-fraunces), serif;
-    --font-sans: var(--font-inter), sans-serif;
-    --font-mono: var(--font-jetbrains-mono), monospace;
+:root,
+.dark,
+[data-theme="dark"] {
+  --background: #0E1420;
+  --foreground: #F6F1E4;
+  --surface: #141C2C;
+  --surface-elevated: #1E2A3F;
+  --surface-subtle: #182337;
+  --surface-hover: #1E2A3F;
+  --border: rgba(183, 192, 206, 0.15);
+  --border-subtle: rgba(183, 192, 206, 0.08);
+  --primary: #C9973F;
+  --primary-hover: #DDB35F;
+  --primary-foreground: #0E1420;
+  --accent: #C9973F;
+  --accent-foreground: #0E1420;
+  --muted: #1E2A3F;
+  --muted-foreground: #93A0B3;
+  --destructive: #E8674A;
+  --destructive-foreground: #F6F1E4;
+  --success: #7FA687;
+  --success-foreground: #0E1420;
+  --input-bg: #141C2C;
+  --input-border: rgba(183, 192, 206, 0.2);
+  --ring: #C9973F;
+  --grid-line: rgba(30, 42, 63, 0.4);
+  --header-bg: rgba(20, 28, 44, 0.95);
+  --card-bg: #141C2C;
+  --card-border: rgba(183, 192, 206, 0.15);
+  --shadow-color: rgba(14, 20, 32, 0.5);
 
-    --radius-sm: 8px;
-    --radius-md: 14px;
-    --radius-lg: 24px;
-  }
-}
-
-@theme {
   --color-ink-950: #0E1420;
   --color-ink-900: #141C2C;
   --color-ink-850: #182337;
@@ -42,16 +54,98 @@
   --color-slate-300: #B7C0CE;
   --color-slate-400: #93A0B3;
   --color-slate-500: #7C8798;
+}
 
-  --font-serif: var(--font-fraunces), serif;
-  --font-sans: var(--font-inter), sans-serif;
+.light,
+[data-theme="light"] {
+  --background: #F4EFE6;
+  --foreground: #0E1420;
+  --surface: #FFFFFF;
+  --surface-elevated: #FAF6EE;
+  --surface-subtle: #FDFBF7;
+  --surface-hover: #FAF6EE;
+  --border: rgba(20, 28, 44, 0.12);
+  --border-subtle: rgba(20, 28, 44, 0.06);
+  --primary: #C9973F;
+  --primary-hover: #DDB35F;
+  --primary-foreground: #0E1420;
+  --accent: #C9973F;
+  --accent-foreground: #0E1420;
+  --muted: #F5EFE6;
+  --muted-foreground: #4B5869;
+  --destructive: #C93B1E;
+  --destructive-foreground: #FFFFFF;
+  --success: #3E7548;
+  --success-foreground: #FFFFFF;
+  --input-bg: #FFFFFF;
+  --input-border: rgba(20, 28, 44, 0.2);
+  --ring: #C9973F;
+  --grid-line: rgba(20, 28, 44, 0.06);
+  --header-bg: rgba(255, 255, 255, 0.96);
+  --card-bg: #FFFFFF;
+  --card-border: rgba(20, 28, 44, 0.12);
+  --shadow-color: rgba(20, 28, 44, 0.06);
+
+  --color-ink-950: #0E1420;
+  --color-ink-900: #FFFFFF;
+  --color-ink-850: #FAF6EE;
+  --color-ink-800: #F4EFE6;
+  --color-parchment-50: #0E1420;
+  --color-brass-500: #C9973F;
+  --color-brass-400: #DDB35F;
+  --color-coral-500: #C93B1E;
+  --color-sage-500: #3E7548;
+  --color-slate-300: #1E293B;
+  --color-slate-400: #334155;
+  --color-slate-500: #4B5869;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-input-bg: var(--input-bg);
+  --color-input-border: var(--input-border);
+  --color-ring: var(--ring);
+
+  --color-ink-950: var(--color-ink-950);
+  --color-ink-900: var(--color-ink-900);
+  --color-ink-850: var(--color-ink-850);
+  --color-ink-800: var(--color-ink-800);
+  --color-parchment-50: var(--color-parchment-50);
+  --color-brass-500: var(--color-brass-500);
+  --color-brass-400: var(--color-brass-400);
+  --color-coral-500: var(--color-coral-500);
+  --color-sage-500: var(--color-sage-500);
+  --color-slate-300: var(--color-slate-300);
+  --color-slate-400: var(--color-slate-400);
+  --color-slate-500: var(--color-slate-500);
+
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-jetbrains-mono), monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
 }
 
 /* Base Body Styles */
 body {
-  background-color: var(--color-ink-950);
-  color: var(--color-parchment-50);
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: var(--font-sans);
   min-height: 100vh;
   margin: 0;
@@ -59,22 +153,23 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Custom Cartographic Grid Pattern */
 .bg-atlas-grid {
   background-size: 40px 40px;
   background-image: 
-    linear-gradient(to right, rgba(30, 42, 63, 0.25) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(30, 42, 63, 0.25) 1px, transparent 1px);
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
 }
 
 /* Route Thread Dashed Line */
 .dashed-border {
   background-image: repeating-linear-gradient(
     to right,
-    rgba(201, 151, 63, 0.6) 0,
-    rgba(201, 151, 63, 0.6) 4px,
+    var(--primary) 0,
+    var(--primary) 4px,
     transparent 4px,
     transparent 8px
   );
@@ -82,7 +177,7 @@ body {
 
 /* Accessibility Focus Visible */
 *:focus-visible {
-  outline: 2px solid var(--color-brass-500);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 

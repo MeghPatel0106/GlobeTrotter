@@ -58,8 +58,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           {maxLength && (
             <span
               className={cn(
-                "text-[11px] font-mono text-slate-500",
-                charCount >= maxLength && "text-coral-500 font-semibold"
+                "text-[11px] font-mono text-muted-foreground",
+                charCount >= maxLength && "text-destructive font-semibold"
               )}
             >
               {charCount}/{maxLength}
@@ -79,23 +79,23 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             aria-invalid={!!error}
             aria-describedby={error ? errorId : helperText ? helperId : undefined}
             className={cn(
-              "w-full min-h-[90px] px-3.5 py-2.5 text-sm bg-ink-900/90 text-parchment-50 placeholder:text-slate-500 rounded-[8px] border transition-all duration-160 resize-y",
-              "border-slate-500/25 hover:border-slate-500/40",
-              "focus:outline-none focus:border-brass-500 focus:ring-2 focus:ring-brass-500/20",
-              "disabled:bg-ink-950/60 disabled:border-slate-500/10 disabled:text-slate-500 disabled:cursor-not-allowed",
-              error && "border-coral-500/80 focus:border-coral-500 focus:ring-coral-500/20",
+              "w-full min-h-[90px] px-3.5 py-2.5 text-sm bg-input-bg text-foreground placeholder:text-muted-foreground rounded-[8px] border transition-all duration-160 resize-y",
+              "border-input-border hover:border-border",
+              "focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20",
+              "disabled:bg-surface-elevated disabled:border-border-subtle disabled:text-muted-foreground disabled:cursor-not-allowed",
+              error && "border-destructive/80 focus:border-destructive focus:ring-destructive/20",
               className
             )}
             {...props}
           />
         </div>
         {error ? (
-          <p id={errorId} className="text-xs text-coral-500 flex items-center gap-1 mt-0.5" role="alert">
+          <p id={errorId} className="text-xs text-destructive flex items-center gap-1 mt-0.5" role="alert">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>{error}</span>
           </p>
         ) : helperText ? (
-          <p id={helperId} className="text-xs text-slate-500 mt-0.5">
+          <p id={helperId} className="text-xs text-muted-foreground mt-0.5">
             {helperText}
           </p>
         ) : null}

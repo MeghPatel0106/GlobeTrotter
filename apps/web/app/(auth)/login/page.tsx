@@ -74,15 +74,15 @@ function LoginForm() {
 
   return (
     <ErrorShake trigger={!!serverError} className="w-full max-w-[480px]">
-      <Card className="border border-slate-500/20 bg-ink-900 shadow-2xl w-full">
+      <Card className="border border-border bg-surface shadow-xl w-full">
         <CardHeader className="space-y-2 pb-4 text-center">
-          <div className="mx-auto w-12 h-12 rounded-full bg-brass-500/10 border border-brass-500/30 flex items-center justify-center text-brass-400 mb-1">
+          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary mb-1">
             <Compass className="w-6 h-6" />
           </div>
-          <CardTitle className="text-2xl font-serif tracking-tight text-parchment-50">
+          <CardTitle className="text-2xl font-bold tracking-tight text-foreground">
             Open Your Journal
           </CardTitle>
-          <CardDescription className="text-slate-400 text-sm max-w-sm mx-auto">
+          <CardDescription className="text-muted-foreground text-sm max-w-sm mx-auto">
             Log in to continue building your personalized multi-city itineraries
             and route plans.
           </CardDescription>
@@ -95,7 +95,7 @@ function LoginForm() {
               {serverError && (
                 <MotionFadeRise className="mb-3">
                   <div
-                    className="p-3 rounded-[8px] bg-coral-500/10 border border-coral-500/40 text-coral-500 text-xs leading-relaxed"
+                    className="p-3 rounded-[8px] bg-destructive/10 border border-destructive/40 text-destructive text-xs leading-relaxed"
                     role="alert"
                   >
                     {serverError}
@@ -136,7 +136,7 @@ function LoginForm() {
                     <button
                       type="button"
                       onClick={handleForgotPassword}
-                      className="text-xs text-brass-400 hover:text-brass-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 rounded py-1 px-1.5 cursor-pointer"
+                      className="text-xs text-primary hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded py-1 px-1.5 cursor-pointer"
                     >
                       Forgot password?
                     </button>
@@ -164,12 +164,12 @@ function LoginForm() {
             </MotionStaggerContainer>
           </CardContent>
 
-          <CardFooter className="flex flex-col gap-2 pt-0 pb-6 text-center border-t border-slate-500/10 mt-2">
-            <p className="text-xs text-slate-400 mt-4">
+          <CardFooter className="flex flex-col gap-2 pt-0 pb-6 text-center border-t border-border mt-2">
+            <p className="text-xs text-muted-foreground mt-4">
               Don&apos;t have an account yet?{" "}
               <Link
                 href="/register"
-                className="font-medium text-brass-400 hover:text-brass-300 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brass-500 rounded"
+                className="font-medium text-primary hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
               >
                 Create account
               </Link>
@@ -185,8 +185,8 @@ export default function LoginPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="flex flex-col items-center justify-center p-8 text-slate-400">
-          <Compass className="w-8 h-8 text-brass-400 animate-spin mb-2" />
+        <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
+          <Compass className="w-8 h-8 text-primary animate-spin mb-2" />
           <span className="text-xs font-mono">Opening travel journal...</span>
         </div>
       }
