@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+@layer theme {
+  :root {
+    --color-ink-950: #0E1420;
+    --color-ink-900: #141C2C;
+    --color-ink-850: #182337;
+    --color-ink-800: #1E2A3F;
+    --color-parchment-50: #F6F1E4;
+    --color-brass-500: #C9973F;
+    --color-brass-400: #DDB35F;
+    --color-coral-500: #E8674A;
+    --color-sage-500: #7FA687;
+    --color-slate-300: #B7C0CE;
+    --color-slate-400: #93A0B3;
+    --color-slate-500: #7C8798;
+
+    --font-serif: var(--font-fraunces), serif;
+    --font-sans: var(--font-inter), sans-serif;
+    --font-mono: var(--font-jetbrains-mono), monospace;
+
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 24px;
+  }
+}
+
+@theme {
+  --color-ink-950: #0E1420;
+  --color-ink-900: #141C2C;
+  --color-ink-850: #182337;
+  --color-ink-800: #1E2A3F;
+  --color-parchment-50: #F6F1E4;
+  --color-brass-500: #C9973F;
+  --color-brass-400: #DDB35F;
+  --color-coral-500: #E8674A;
+  --color-sage-500: #7FA687;
+  --color-slate-300: #B7C0CE;
+  --color-slate-400: #93A0B3;
+  --color-slate-500: #7C8798;
+
+  --font-serif: var(--font-fraunces), serif;
+  --font-sans: var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+}
+
+/* Base Body Styles */
+body {
+  background-color: var(--color-ink-950);
+  color: var(--color-parchment-50);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Cartographic Grid Pattern */
+.bg-atlas-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(30, 42, 63, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 42, 63, 0.25) 1px, transparent 1px);
+}
+
+/* Route Thread Dashed Line */
+.dashed-border {
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(201, 151, 63, 0.6) 0,
+    rgba(201, 151, 63, 0.6) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* Accessibility Focus Visible */
+*:focus-visible {
+  outline: 2px solid var(--color-brass-500);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
