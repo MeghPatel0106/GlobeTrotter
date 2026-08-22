@@ -109,8 +109,17 @@ export class Trip {
   @Prop({ required: false, type: String })
   shareToken?: string;
 
+  @Prop({ type: Number, default: 0, index: true })
+  likesCount?: number;
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [] })
+  likedBy?: Types.ObjectId[];
+
   @Prop({ type: [StopSchema], default: [] })
   stops: Stop[];
+
+  @Prop({ required: false, default: null })
+  publishedAt?: Date;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -120,4 +129,7 @@ export const TripSchema = SchemaFactory.createForClass(Trip);
 
 TripSchema.index({ userId: 1, createdAt: -1 });
 TripSchema.index({ visibility: 1, status: 1 });
+TripSchema.index({ visibility: 1, publishedAt: -1 });
+TripSchema.index({ visibility: 1, createdAt: -1 });
+TripSchema.index({ visibility: 1, likesCount: -1 });
 TripSchema.index({ shareToken: 1 }, { unique: true, sparse: true });

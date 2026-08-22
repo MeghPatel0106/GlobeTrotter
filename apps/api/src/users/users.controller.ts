@@ -5,7 +5,7 @@ import {
   Body,
   UseGuards,
 } from "@nestjs/common";
-import { UsersService } from "./users.service";
+import { UsersService, UpdateUserDto } from "./users.service";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
@@ -22,16 +22,7 @@ export class UsersController {
   @Patch("me")
   async updateMe(
     @CurrentUser("id") userId: string,
-    @Body()
-    body: {
-      firstName?: string;
-      lastName?: string;
-      phone?: string;
-      photoUrl?: string;
-      city?: string;
-      country?: string;
-      additionalInfo?: string;
-    }
+    @Body() body: UpdateUserDto
   ) {
     return this.usersService.updateMe(userId, body);
   }

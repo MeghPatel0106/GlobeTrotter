@@ -138,9 +138,14 @@ export default function AppLayout({
             <div className="h-8 w-24 bg-surface-elevated rounded animate-pulse" />
           ) : user ? (
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="flex items-center gap-2 text-right">
+              <Link
+                href="/profile"
+                className="flex items-center gap-2 text-right group p-1 rounded-[8px] hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                title="View Profile & Settings"
+                aria-label="View Profile & Settings"
+              >
                 <div className="hidden sm:flex flex-col">
-                  <span className="text-xs font-semibold text-foreground leading-none">
+                  <span className="text-xs font-semibold text-foreground leading-none group-hover:text-primary transition-colors">
                     {user.firstName} {user.lastName}
                   </span>
                   <span className="font-mono text-[10px] text-muted-foreground leading-tight">
@@ -151,7 +156,7 @@ export default function AppLayout({
                     )}
                   </span>
                 </div>
-                <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/50 bg-surface-elevated flex items-center justify-center text-primary font-bold text-xs shrink-0 shadow-xs">
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/50 bg-surface-elevated flex items-center justify-center text-primary font-bold text-xs shrink-0 shadow-xs group-hover:border-primary transition-colors">
                   {user.photoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -163,7 +168,7 @@ export default function AppLayout({
                     user.firstName?.charAt(0) || <UserIcon className="w-4 h-4" />
                   )}
                 </div>
-              </div>
+              </Link>
 
               <Button
                 variant="secondary"

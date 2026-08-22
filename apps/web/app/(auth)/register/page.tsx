@@ -110,11 +110,11 @@ export default function RegisterPage() {
             <Compass className="w-6 h-6" />
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-            Begin Your Voyage
+            Create Your Account
           </h1>
           <p className="text-muted-foreground text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
-            Create your explorer profile to plan, customize, and share
-            multi-city journeys across the globe.
+            Create your profile to plan, customize, and share
+            multi-city trips across the globe.
           </p>
         </div>
 

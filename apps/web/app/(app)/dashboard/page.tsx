@@ -133,7 +133,7 @@ export default function DashboardPage() {
           <div className="space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-mono">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>EXPEDITION DISPATCH · ATLAS & INK</span>
+              <span>TRAVEL HUB · ATLAS & INK</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
@@ -145,7 +145,7 @@ export default function DashboardPage() {
             </h1>
 
             <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
-              Curate multi-city voyages, explore vetted cultural stops, and chronicle
+              Plan multi-city trips, explore popular destinations, and organize
               day-by-day itineraries with personalized budgets.
             </p>
           </div>
@@ -177,13 +177,13 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* 2. PREVIOUS / ONGOING EXPEDITIONS SECTION */}
+      {/* 2. PREVIOUS / ONGOING TRIPS SECTION */}
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-4 border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-primary" />
             <h2 className="text-xl sm:text-2xl font-bold text-foreground">
-              Your Expeditions
+              Your Trips
             </h2>
           </div>
           {recentTrips.length > 0 && (
@@ -213,7 +213,7 @@ export default function DashboardPage() {
           </div>
         ) : isTripsError ? (
           <div className="p-6 rounded-[14px] bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-center justify-between gap-4">
-            <span>Failed to load your expedition logs from MongoDB.</span>
+            <span>Failed to load your trips from database.</span>
             <Button
               variant="secondary"
               size="sm"
@@ -303,7 +303,7 @@ export default function DashboardPage() {
                       href={`/trips/mine`}
                       className="text-primary hover:underline font-medium flex items-center gap-1 p-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
                     >
-                      <span>Open Journal</span>
+                      <span>View Trip</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </CardFooter>
@@ -492,7 +492,7 @@ export default function DashboardPage() {
                           className="gap-1.5 text-xs h-9 px-3"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>Plan Voyage</span>
+                          <span>Plan Trip</span>
                         </Button>
                       </Link>
                     </CardFooter>

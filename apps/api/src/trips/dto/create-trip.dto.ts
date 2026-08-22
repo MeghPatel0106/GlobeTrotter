@@ -116,7 +116,7 @@ export class CreateTripDto {
   sectionBudget: number;
 
   @IsString()
-  @IsNotEmpty({ message: "Expedition notes / objectives are required." })
+  @IsNotEmpty({ message: "Trip notes / objectives are required." })
   notes: string;
 
   @IsString()

@@ -271,13 +271,13 @@ export default function CalendarPage() {
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-primary">
             <Compass className="w-3.5 h-3.5 animate-[spin_20s_linear_infinite]" />
-            <span>Expedition Schedule</span>
+            <span>Trip Schedule</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Voyage Calendar & Timeline
+            Trip Calendar & Timeline
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Visual day-by-day timeline of your planned trips and destination legs.
+            Visual day-by-day timeline of your planned trips and destination stops.
           </p>
         </div>
 
@@ -543,7 +543,7 @@ export default function CalendarPage() {
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-base font-bold text-foreground">
-                        No Expeditions in {monthTitle}
+                        No Trips in {monthTitle}
                       </h3>
                       <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                         You have no trips scheduled for this month. Plan a new journey or navigate between months.
@@ -557,7 +557,7 @@ export default function CalendarPage() {
                         className="gap-1.5 text-xs text-primary-foreground"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Plan New Expedition</span>
+                        <span>Plan New Trip</span>
                       </Button>
                     </Link>
                   </Card>
@@ -598,7 +598,7 @@ export default function CalendarPage() {
                                 </span>
 
                                 <span className="px-2 py-0.5 rounded-[6px] bg-surface-subtle border border-border text-[11px] font-mono text-muted-foreground">
-                                  {stopsList.length} Leg{stopsList.length === 1 ? "" : "s"}
+                                  {stopsList.length} Stop{stopsList.length === 1 ? "" : "s"}
                                 </span>
                               </div>
 
@@ -661,7 +661,7 @@ export default function CalendarPage() {
                   className="text-primary font-semibold hover:underline flex items-center gap-1 self-start sm:self-auto"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Plan a voyage for this month</span>
+                  <span>Plan a trip for this month</span>
                 </Link>
               </div>
             )}

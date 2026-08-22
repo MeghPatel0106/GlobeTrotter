@@ -24,7 +24,6 @@ import {
   AlertCircle,
   Clock,
   ArrowUpRight,
-  DollarSign,
   BarChart3,
   Flame,
 } from "lucide-react";
@@ -231,13 +230,13 @@ export default function AdminDashboardPage() {
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-primary font-bold">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Root Ops · Platform Telemetry</span>
+            <span>Admin Center · Platform Telemetry</span>
           </div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
             Admin & Analytics Center
           </h1>
           <p className="text-muted-foreground text-xs sm:text-sm max-w-2xl">
-            Live MongoDB platform analytics, user registry management, top voyage destinations, and growth trends.
+            Live MongoDB platform analytics, user directory, top destinations, and growth trends.
           </p>
         </div>
 
@@ -265,7 +264,7 @@ export default function AdminDashboardPage() {
             <CardContent className="p-5 flex items-center justify-between gap-3">
               <div className="space-y-1">
                 <span className="text-[11px] font-mono text-muted-foreground uppercase">
-                  Total Explorers
+                  Total Users
                 </span>
                 <div className="text-2xl sm:text-3xl font-bold text-foreground">
                   {isSummaryLoading ? (
@@ -286,13 +285,13 @@ export default function AdminDashboardPage() {
           </Card>
         </MotionFadeRise>
 
-        {/* Metric 2: Total Expeditions */}
+        {/* Metric 2: Total Trips */}
         <MotionFadeRise>
           <Card className="border-border bg-surface shadow-xs">
             <CardContent className="p-5 flex items-center justify-between gap-3">
               <div className="space-y-1">
                 <span className="text-[11px] font-mono text-muted-foreground uppercase">
-                  Total Expeditions
+                  Total Trips
                 </span>
                 <div className="text-2xl sm:text-3xl font-bold text-foreground">
                   {isSummaryLoading ? (
@@ -313,13 +312,13 @@ export default function AdminDashboardPage() {
           </Card>
         </MotionFadeRise>
 
-        {/* Metric 3: Public Shared Voyages */}
+        {/* Metric 3: Public Shared Trips */}
         <MotionFadeRise>
           <Card className="border-border bg-surface shadow-xs">
             <CardContent className="p-5 flex items-center justify-between gap-3">
               <div className="space-y-1">
                 <span className="text-[11px] font-mono text-muted-foreground uppercase">
-                  Public Voyages
+                  Public Trips
                 </span>
                 <div className="text-2xl sm:text-3xl font-bold text-foreground">
                   {isSummaryLoading ? (
@@ -550,7 +549,7 @@ export default function AdminDashboardPage() {
               <MapPin className="w-8 h-8 text-muted-foreground mx-auto" />
               <h3 className="text-base font-bold text-foreground">No City Data Yet</h3>
               <p className="text-xs text-muted-foreground">
-                As explorers plan expeditions, popular destination legs will appear here automatically.
+                As users plan trips, popular destinations will appear here automatically.
               </p>
             </Card>
           ) : (
@@ -746,7 +745,7 @@ export default function AdminDashboardPage() {
 
                       <div className="text-right shrink-0 font-mono">
                         <span className="font-bold text-emerald-500 block">
-                          {act.count} {act.count === 1 ? "Book" : "Books"}
+                          {act.count} {act.count === 1 ? "Trip" : "Trips"}
                         </span>
                       </div>
                     </div>
@@ -764,7 +763,9 @@ export default function AdminDashboardPage() {
       {activeTab === "trends" && (
         <div className="space-y-6">
           {isTrendsLoading ? (
-            <div className="h-80 w-full bg-surface-elevated animate-pulse rounded-[14px]" />
+            <Card className="p-8 border-border bg-surface animate-pulse h-80 flex items-center justify-center">
+              <span className="text-xs font-mono text-muted-foreground">Aggregating telemetry timeline...</span>
+            </Card>
           ) : isTrendsError ? (
             <Card className="p-8 text-center border-border bg-surface">
               <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
@@ -775,16 +776,16 @@ export default function AdminDashboardPage() {
             </Card>
           ) : (
             <div className="space-y-6">
-              {/* Trends Area / Line Chart */}
-              <Card className="border-border bg-surface rounded-[14px] p-5 sm:p-6 shadow-xs">
-                <CardHeader className="p-0 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              {/* User Growth Line Chart */}
+              <Card className="border-border bg-surface rounded-[14px] p-5 shadow-xs">
+                <CardHeader className="p-0 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <CardTitle className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
                       <TrendingUp className="w-5 h-5 text-primary" />
                       <span>Platform Growth Telemetry (Monthly Trends)</span>
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Tracking monthly user registrations and voyage route creation events.
+                      Tracking monthly user registrations and trip creation events.
                     </CardDescription>
                   </div>
 
@@ -795,7 +796,7 @@ export default function AdminDashboardPage() {
                     </span>
                     <span className="flex items-center gap-1.5 text-blue-500">
                       <span className="w-3 h-3 rounded-full bg-blue-500" />
-                      <span>Expeditions Created</span>
+                      <span>Trips Created</span>
                     </span>
                   </div>
                 </CardHeader>
@@ -829,7 +830,7 @@ export default function AdminDashboardPage() {
                       <Area
                         type="monotone"
                         dataKey="usersCount"
-                        name="New Explorers"
+                        name="New Users"
                         stroke="#C9973F"
                         strokeWidth={2.5}
                         fillOpacity={1}
@@ -839,7 +840,7 @@ export default function AdminDashboardPage() {
                       <Area
                         type="monotone"
                         dataKey="tripsCount"
-                        name="Created Expeditions"
+                        name="Created Trips"
                         stroke="#3B82F6"
                         strokeWidth={2.5}
                         fillOpacity={1}
@@ -855,7 +856,7 @@ export default function AdminDashboardPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card className="p-4 border-border bg-surface text-xs space-y-1 shadow-xs">
                   <span className="font-mono text-muted-foreground uppercase text-[10px]">
-                    Trips Per Explorer
+                    Trips Per User
                   </span>
                   <div className="text-xl font-bold text-foreground font-mono">
                     {summary && summary.totalUsers > 0
@@ -863,7 +864,7 @@ export default function AdminDashboardPage() {
                       : "0.0"}
                   </div>
                   <p className="text-muted-foreground text-[11px]">
-                    Average route creation velocity per account.
+                    Average trip creation velocity per account.
                   </p>
                 </Card>
 
@@ -877,7 +878,7 @@ export default function AdminDashboardPage() {
                       : "0%"}
                   </div>
                   <p className="text-muted-foreground text-[11px]">
-                    Proportion of voyages published with public share tokens.
+                    Proportion of trips published with public share tokens.
                   </p>
                 </Card>
 

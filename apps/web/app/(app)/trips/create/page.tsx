@@ -9,7 +9,6 @@ import {
   Compass,
   MapPin,
   Calendar,
-  DollarSign,
   Sparkles,
   ArrowRight,
   Clock,
@@ -108,7 +107,7 @@ function CreateTripForm() {
 
   // Trip basic info state
   const [tripName, setTripName] = React.useState(
-    initialCityName ? `Voyage to ${initialCityName}` : ""
+    initialCityName ? `Trip to ${initialCityName}` : ""
   );
 
   // Automatically update trip name when cities change (if untouched by user)
@@ -121,9 +120,9 @@ function CreateTripForm() {
     }
     if (!isTripNameCustomized.current) {
       if (cities.length === 1) {
-        setTripName(`Voyage to ${cities[0].name}`);
+        setTripName(`Trip to ${cities[0].name}`);
       } else if (cities.length === 2) {
-        setTripName(`Voyage to ${cities[0].name} & ${cities[1].name}`);
+        setTripName(`Trip to ${cities[0].name} & ${cities[1].name}`);
       } else {
         setTripName(`${cities.map((c) => c.name).join(" → ")}`);
       }
@@ -500,7 +499,7 @@ function CreateTripForm() {
     }
 
     if (!notes.trim()) {
-      newErrors.notes = "Expedition notes / objectives are required.";
+      newErrors.notes = "Trip notes / objectives are required.";
     }
 
     setErrors(newErrors);
@@ -552,7 +551,7 @@ function CreateTripForm() {
 
       const createdTrip = await tripsApi.createTrip(payload);
       toast.success(
-        `Expedition created with ${selectedCities.length} leg${
+        `Trip created with ${selectedCities.length} stop${
           selectedCities.length === 1 ? "" : "s"
         } in ${selectedCountry}!`,
         { duration: 2500 }
@@ -598,24 +597,23 @@ function CreateTripForm() {
         </Link>
         <ChevronRight className="w-3.5 h-3.5" />
         <Link href="/trips/mine" className="hover:text-foreground transition-colors">
-          Expeditions
+          Trips
         </Link>
         <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-primary font-semibold">New Voyage</span>
+        <span className="text-primary font-semibold">New Trip</span>
       </nav>
 
       {/* Page Header */}
       <div className="border-b border-border pb-5">
         <div className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-primary mb-1">
           <Compass className="w-3.5 h-3.5" />
-          <span>Itinerary Initiation · Select Country → Multi-City Route</span>
+          <span>Trip Setup · Select Country → Multi-City Route</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-          Chart a New Voyage
+          Plan a New Trip
         </h1>
         <p className="text-muted-foreground text-sm sm:text-base mt-1 max-w-2xl">
-          Set your journey timeline, choose the destinations for your expedition in sequence, and
-          curate places tailored to your destination country.
+          Set your journey dates, choose destinations in sequence, and customize activities for your trip.
         </p>
       </div>
 
@@ -627,7 +625,7 @@ function CreateTripForm() {
             {/* Trip Name */}
             <div className="space-y-1.5">
               <Input
-                label="Expedition / Trip Name"
+                label="Trip Name"
                 placeholder="e.g. Grand Tour of Western India or California Roadtrip"
                 value={tripName}
                 onChange={(e) => {
@@ -1165,7 +1163,7 @@ function CreateTripForm() {
               <div className="space-y-1.5">
                 <Input
                   type="date"
-                  label="Expedition Start Date"
+                  label="Start Date"
                   min={todayStr}
                   value={startDate}
                   onChange={(e) => {
@@ -1187,7 +1185,7 @@ function CreateTripForm() {
               <div className="space-y-1.5">
                 <Input
                   type="date"
-                  label="Expedition End Date"
+                  label="End Date"
                   min={startDate || todayStr}
                   value={endDate}
                   onChange={(e) => {
@@ -1231,11 +1229,11 @@ function CreateTripForm() {
               />
 
               <div className="sm:col-span-2 space-y-1.5">
-                <Label required htmlFor="expedition-notes">
-                  Expedition Notes / Objectives
+                <Label required htmlFor="trip-notes">
+                  Trip Notes / Objectives
                 </Label>
                 <Textarea
-                  id="expedition-notes"
+                  id="trip-notes"
                   placeholder="e.g. Focus on historic temple walks, culinary masterclasses, and coastal photography..."
                   maxLength={400}
                   required

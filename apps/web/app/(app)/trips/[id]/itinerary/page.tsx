@@ -23,7 +23,9 @@ import {
   Compass,
   MapPin,
   Calendar,
-  DollarSign,
+  Wallet,
+  Receipt,
+  Coins,
   ChevronRight,
   Plus,
   GripVertical,
@@ -50,12 +52,10 @@ import {
   Sunset,
   ArrowUp,
   ArrowDown,
-  Receipt,
   Car,
   Bed,
   Utensils,
   Ticket,
-  Wallet,
   TrendingUp,
   PieChart as PieChartIcon,
   BarChart3,
@@ -1392,7 +1392,7 @@ export default function TripItineraryPage() {
       const deletedName = deletingStop?.name || "Destination";
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
       queryClient.invalidateQueries({ queryKey: ["trips"] });
-      toast.success(`Removed ${deletedName} leg from expedition`);
+      toast.success(`Removed ${deletedName} from trip`);
       setDeletingStop(null);
     },
     onError: (err: any) => {
@@ -1675,6 +1675,23 @@ export default function TripItineraryPage() {
     },
   });
 
+  // Delete / Cancel Trip State & Mutation
+  const [isDeleteTripModalOpen, setIsDeleteTripModalOpen] = React.useState(false);
+
+  const deleteTripMutation = useMutation({
+    mutationFn: () => tripsApi.deleteTrip(tripId),
+    onSuccess: () => {
+      toast.success("Trip cancelled and permanently deleted from database.");
+      setIsDeleteTripModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      queryClient.invalidateQueries({ queryKey: ["community", "feed"] });
+      router.push("/trips/mine");
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to delete trip. Please try again.");
+    },
+  });
+
   // Open Share Modal
   const handleOpenShareModal = () => {
     if (trip?.shareToken) {
@@ -1719,13 +1736,13 @@ export default function TripItineraryPage() {
         <div className="p-4 rounded-full bg-destructive/10 text-destructive w-12 h-12 mx-auto flex items-center justify-center">
           <Compass className="w-6 h-6" />
         </div>
-        <h2 className="text-xl font-bold text-foreground">Voyage Not Found</h2>
+        <h2 className="text-xl font-bold text-foreground">Trip Not Found</h2>
         <p className="text-sm text-muted-foreground">
-          The requested expedition itinerary could not be loaded.
+          The requested trip itinerary could not be loaded.
         </p>
         <Link href="/trips/mine">
           <Button variant="secondary" size="sm" className="mt-2">
-            Back to Expeditions
+            Back to Trips
           </Button>
         </Link>
       </div>
@@ -1773,7 +1790,7 @@ export default function TripItineraryPage() {
         </Link>
         <ChevronRight className="w-3.5 h-3.5 shrink-0" />
         <Link href="/trips/mine" className="hover:text-foreground transition-colors shrink-0">
-          Expeditions
+          Trips
         </Link>
         <ChevronRight className="w-3.5 h-3.5 shrink-0" />
         <span className="text-foreground truncate max-w-[160px] sm:max-w-[240px] font-medium">
@@ -1792,7 +1809,7 @@ export default function TripItineraryPage() {
             <div className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-primary">
               <Compass className="w-3.5 h-3.5 animate-[spin_20s_linear_infinite]" />
               <span>
-                Expedition Itinerary · {primaryCountry}
+                Trip Itinerary · {primaryCountry}
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground truncate">
@@ -1842,7 +1859,7 @@ export default function TripItineraryPage() {
               onClick={handleOpenBudgetSummary}
               className="gap-2 border-primary/40 text-primary hover:bg-primary/10 hover:border-primary transition-colors cursor-pointer min-h-[40px] shadow-2xs font-semibold"
             >
-              <DollarSign className="w-4 h-4 text-primary" />
+              <Wallet className="w-4 h-4 text-primary" />
               <span>View Budget</span>
             </Button>
 
@@ -1860,6 +1877,19 @@ export default function TripItineraryPage() {
                 <Share2 className="w-4 h-4 text-primary" />
               )}
               <span>Share Trip</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              onClick={() => setIsDeleteTripModalOpen(true)}
+              disabled={deleteTripMutation.isPending}
+              className="gap-2 border-border text-muted-foreground hover:border-destructive/40 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer min-h-[40px] shadow-2xs font-semibold"
+              title="Cancel and permanently delete this trip"
+            >
+              <Trash2 className="w-4 h-4 text-destructive/80" />
+              <span>Cancel Trip</span>
             </Button>
           </div>
         </div>
@@ -1907,7 +1937,7 @@ export default function TripItineraryPage() {
             </div>
             <div className="min-w-0">
               <span className="text-[10px] font-mono text-muted-foreground uppercase block">
-                Expedition Spending
+                Trip Spending
               </span>
               <span className="font-semibold text-foreground truncate block">
                 Spent: {tripCurrencySymbol}{budgetAnalytics.totalSpent.toLocaleString()}
@@ -2000,7 +2030,7 @@ export default function TripItineraryPage() {
               </div>
               <h3 className="font-bold text-lg text-foreground">No Destinations in Itinerary</h3>
               <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                This expedition does not have any destination sections configured yet.
+                This trip does not have any destination sections configured yet.
               </p>
               <Button
                 type="button"
@@ -2706,7 +2736,7 @@ export default function TripItineraryPage() {
                           placeholder="e.g. 15000"
                           value={sectionBudget}
                           onChange={(e) => setSectionBudget(e.target.value)}
-                          leftIcon={<DollarSign className="w-4 h-4 text-primary" />}
+                          leftIcon={<Coins className="w-4 h-4 text-primary" />}
                         />
                       </div>
                     </div>
@@ -2907,7 +2937,7 @@ export default function TripItineraryPage() {
             onClick={handleOpenBudgetSummary}
             className="gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/10 cursor-pointer min-h-[40px]"
           >
-            <DollarSign className="w-3.5 h-3.5" />
+            <Wallet className="w-3.5 h-3.5" />
             <span>View Budget Summary</span>
           </Button>
 
@@ -2943,7 +2973,7 @@ export default function TripItineraryPage() {
                     <Globe className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-foreground">Share Expedition Itinerary</h3>
+                    <h3 className="text-base font-bold text-foreground">Share Trip Itinerary</h3>
                     <p className="text-xs text-muted-foreground">Public Read-Only Link</p>
                   </div>
                 </div>
@@ -3049,7 +3079,7 @@ export default function TripItineraryPage() {
                   </div>
                   <div>
                     <h3 className="text-lg sm:text-xl font-bold text-foreground">
-                      Expedition Budget Summary
+                      Trip Budget Summary
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {trip.name} · {allDays.length} Days Planned
@@ -3598,7 +3628,7 @@ export default function TripItineraryPage() {
                         placeholder={`Cost (${getCurrencySymbol(targetAddActivityDay?.country)})`}
                         value={customActivityCost}
                         onChange={(e) => setCustomActivityCost(e.target.value)}
-                        leftIcon={<DollarSign className="w-3.5 h-3.5 text-primary" />}
+                        leftIcon={<Coins className="w-3.5 h-3.5 text-primary" />}
                       />
                     </div>
                     <Button
@@ -3699,7 +3729,7 @@ export default function TripItineraryPage() {
                       value={editActivityCost}
                       onChange={(e) => setEditActivityCost(e.target.value)}
                       placeholder="0 for Free"
-                      leftIcon={<DollarSign className="w-4 h-4 text-primary" />}
+                      leftIcon={<Coins className="w-4 h-4 text-primary" />}
                     />
                   </div>
                 </div>
@@ -3873,7 +3903,7 @@ export default function TripItineraryPage() {
                       placeholder={`e.g. 450 in ${getCurrencyForCountry(targetAddExpenseDay.country).code}`}
                       value={expenseAmount}
                       onChange={(e) => setExpenseAmount(e.target.value)}
-                      leftIcon={<DollarSign className="w-4 h-4 text-primary" />}
+                      leftIcon={<Receipt className="w-4 h-4 text-primary" />}
                       required
                     />
                   </div>
@@ -3991,7 +4021,7 @@ export default function TripItineraryPage() {
                       min="0.01"
                       value={editExpenseAmount}
                       onChange={(e) => setEditExpenseAmount(e.target.value)}
-                      leftIcon={<DollarSign className="w-4 h-4 text-primary" />}
+                      leftIcon={<Receipt className="w-4 h-4 text-primary" />}
                       required
                     />
                   </div>
@@ -4156,6 +4186,61 @@ export default function TripItineraryPage() {
                 >
                   {deleteStopMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Delete Section</span>
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 11. CANCEL & DELETE TRIP CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {isDeleteTripModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={shouldReduceMotion ? undefined : { opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={shouldReduceMotion ? undefined : { opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md rounded-[16px] bg-surface border border-border p-6 space-y-4 shadow-2xl"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-destructive/15 text-destructive shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">Cancel & Delete Trip?</h3>
+                  <p className="text-xs text-muted-foreground">Permanent database removal</p>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                Are you sure you want to cancel and permanently delete <strong className="text-foreground">“{trip?.name || "this trip"}”</strong>? This action will remove all itinerary days, scheduled activities, and recorded expenses from the database.
+              </p>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsDeleteTripModalOpen(false)}
+                  disabled={deleteTripMutation.isPending}
+                  className="cursor-pointer"
+                >
+                  Keep Trip
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => deleteTripMutation.mutate()}
+                  disabled={deleteTripMutation.isPending}
+                  className="gap-1.5 cursor-pointer"
+                >
+                  {deleteTripMutation.isPending && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
+                  <span>Delete Trip</span>
                 </Button>
               </div>
             </motion.div>

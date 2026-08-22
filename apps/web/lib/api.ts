@@ -78,9 +78,24 @@ export interface Trip {
   visibility: string;
   totalBudgetEstimate?: number;
   shareToken?: string;
+  likesCount?: number;
+  likedBy?: string[];
+  publishedAt?: string;
   stops: Stop[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CommunityTrip extends Omit<Trip, "userId"> {
+  userId: {
+    id?: string;
+    firstName: string;
+    lastName: string;
+    username: string;
+    photoUrl?: string | null;
+  };
+  isLiked?: boolean;
+  likesCount?: number;
 }
 
 export interface CreateTripInput {
@@ -337,6 +352,28 @@ export const authApi = {
   },
 };
 
+export interface UpdateUserInput {
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  email?: string;
+  phone?: string | null;
+  photoUrl?: string | null;
+  city?: string | null;
+  country?: string | null;
+  additionalInfo?: string | null;
+}
+
+export const usersApi = {
+  getMe: () => apiFetch<User>("/users/me"),
+  updateMe: (data: UpdateUserInput) =>
+    apiFetch<User>("/users/me", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  uploadAvatar: (file: File) => authApi.uploadAvatar(file),
+};
+
 export const citiesApi = {
   getCountries: () => apiFetch<string[]>("/cities/countries"),
   getTop: (limit = 5, country?: string) =>
@@ -387,6 +424,15 @@ export const citiesApi = {
 export const tripsApi = {
   getUserTrips: (limit = 10, sort = "recent") =>
     apiFetch<Trip[]>(`/trips?limit=${limit}&sort=${sort}`),
+  getCommunityFeed: (sort = "newest", limit = 20) =>
+    apiFetch<CommunityTrip[]>(
+      `/trips/community/feed?sort=${sort}&limit=${limit}`
+    ),
+  toggleLike: (tripId: string) =>
+    apiFetch<{ id: string; likesCount: number; isLiked: boolean }>(
+      `/trips/${tripId}/like`,
+      { method: "POST" }
+    ),
   getCalendarTrips: (month?: number, year?: number) =>
     apiFetch<Trip[]>(
       `/trips?limit=100&sort=start_date${month ? `&month=${month}` : ""}${
@@ -394,9 +440,24 @@ export const tripsApi = {
       }`
     ),
   getById: (id: string) => apiFetch<Trip>(`/trips/${id}`),
+  deleteTrip: (id: string) =>
+    apiFetch<{ success: boolean; message: string; id: string }>(
+      `/trips/${id}`,
+      { method: "DELETE" }
+    ),
   shareTrip: (tripId: string) =>
     apiFetch<{ shareToken: string; shareUrl: string; trip: Trip }>(
       `/trips/${tripId}/share`,
+      { method: "POST" }
+    ),
+  publishToCommunity: (tripId: string) =>
+    apiFetch<{ shareToken: string; shareUrl: string; trip: Trip }>(
+      `/trips/${tripId}/publish`,
+      { method: "POST" }
+    ),
+  unpublishFromCommunity: (tripId: string) =>
+    apiFetch<{ trip: Trip }>(
+      `/trips/${tripId}/unpublish`,
       { method: "POST" }
     ),
   getPublicTrip: (token: string) =>

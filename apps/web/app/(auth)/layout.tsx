@@ -40,7 +40,7 @@ export default function AuthLayout({
             <span className="h-3 w-[1px] bg-border" />
             <span className="flex items-center gap-1.5 text-success">
               <Navigation className="w-3.5 h-3.5" />
-              EXPEDITION LOG
+              TRIP PLANNER
             </span>
           </div>
 

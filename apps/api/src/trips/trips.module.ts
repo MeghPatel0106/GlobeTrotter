@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { Trip, TripSchema } from "../schemas/trip.schema";
 import { City, CitySchema } from "../schemas/city.schema";
+import { Expense, ExpenseSchema } from "../schemas/expense.schema";
 import { TripsController } from "./trips.controller";
 import { StopsController } from "./stops.controller";
 import { ItineraryItemsController } from "./itinerary-items.controller";
@@ -12,6 +13,7 @@ import { TripsService } from "./trips.service";
     MongooseModule.forFeature([
       { name: Trip.name, schema: TripSchema },
       { name: City.name, schema: CitySchema },
+      { name: Expense.name, schema: ExpenseSchema },
     ]),
   ],
   controllers: [TripsController, StopsController, ItineraryItemsController],

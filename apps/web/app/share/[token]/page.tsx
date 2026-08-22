@@ -20,7 +20,7 @@ import {
   Sunrise,
   Sun,
   Sunset,
-  DollarSign,
+  Wallet,
   AlertCircle,
   Loader2,
   CheckCircle2,
@@ -109,7 +109,7 @@ export default function PublicShareTripPage() {
     mutationFn: () => tripsApi.copyPublicTrip(shareToken),
     onSuccess: (newTrip) => {
       queryClient.invalidateQueries({ queryKey: ["trips"] });
-      toast.success(`Copied "${newTrip.name}" to your expeditions!`);
+      toast.success(`Copied "${newTrip.name}" to your trips!`);
       router.push(`/trips/${newTrip.id}/itinerary`);
     },
     onError: (err: any) => {
@@ -436,7 +436,7 @@ export default function PublicShareTripPage() {
             <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[6px] bg-primary/10 border border-primary/20 text-primary uppercase font-bold">
                 <Compass className="w-3.5 h-3.5" />
-                <span>Shared Voyage · {primaryCountry}</span>
+                <span>Shared Trip · {primaryCountry}</span>
               </span>
 
               <span className="text-muted-foreground">
@@ -464,7 +464,7 @@ export default function PublicShareTripPage() {
               </div>
               <div className="min-w-0">
                 <span className="text-[10px] font-mono text-muted-foreground uppercase block">
-                  Voyage Timeline
+                  Trip Timeline
                 </span>
                 <span className="font-semibold text-foreground truncate block">
                   {tripStartFormatted && tripEndFormatted
@@ -494,7 +494,7 @@ export default function PublicShareTripPage() {
             {/* Budget Estimate */}
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="p-2 rounded-[8px] bg-primary/10 text-primary shrink-0">
-                <DollarSign className="w-4 h-4" />
+                <Wallet className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <span className="text-[10px] font-mono text-muted-foreground uppercase block">
@@ -785,7 +785,7 @@ export default function PublicShareTripPage() {
               <span>Love this itinerary?</span>
             </h3>
             <p className="text-xs text-muted-foreground max-w-md">
-              Clone this voyage to your GlobeTrotter account to customize activities, track expenses, and view the day-by-day map.
+              Copy this trip to your GlobeTrotter account to customize activities, track expenses, and view the day-by-day map.
             </p>
           </div>
 

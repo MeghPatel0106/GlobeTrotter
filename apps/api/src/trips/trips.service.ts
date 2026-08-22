@@ -10,6 +10,7 @@ import { Model, Types } from "mongoose";
 import * as crypto from "crypto";
 import { Trip, TripDocument } from "../schemas/trip.schema";
 import { City, CityDocument } from "../schemas/city.schema";
+import { Expense, ExpenseDocument } from "../schemas/expense.schema";
 import { CreateTripDto } from "./dto/create-trip.dto";
 import { AddStopDto, UpdateStopDto } from "./dto/add-stop.dto";
 import {
@@ -23,7 +24,8 @@ import { TripStatus, Visibility } from "../schemas/enums";
 export class TripsService {
   constructor(
     @InjectModel(Trip.name) private tripModel: Model<TripDocument>,
-    @InjectModel(City.name) private cityModel: Model<CityDocument>
+    @InjectModel(City.name) private cityModel: Model<CityDocument>,
+    @InjectModel(Expense.name) private expenseModel: Model<ExpenseDocument>
   ) {}
 
   async getUserTrips(
@@ -206,8 +208,8 @@ export class TripsService {
     const citySummary = cityList.map((c) => c.cityName.trim()).join(" → ");
     const defaultDescription =
       cityList.length > 1
-        ? `Multi-city expedition across ${citySummary}.`
-        : `Expedition to ${cityList[0].cityName}, ${cityList[0].country}.`;
+        ? `Multi-city trip across ${citySummary}.`
+        : `Trip to ${cityList[0].cityName}, ${cityList[0].country}.`;
 
     const newTrip = new this.tripModel({
       userId: new Types.ObjectId(userId),
@@ -804,6 +806,7 @@ export class TripsService {
     }
 
     trip.visibility = Visibility.PUBLIC;
+    trip.publishedAt = new Date();
     await trip.save();
 
     return {
@@ -811,6 +814,61 @@ export class TripsService {
       shareUrl: `/share/${trip.shareToken}`,
       trip,
     };
+  }
+
+  async publishTripToCommunity(
+    userId: string,
+    tripId: string
+  ): Promise<{ shareToken: string; shareUrl: string; trip: Trip }> {
+    if (!Types.ObjectId.isValid(tripId)) {
+      throw new BadRequestException("Invalid trip ID format.");
+    }
+
+    const trip = await this.tripModel.findById(tripId).exec();
+    if (!trip) {
+      throw new NotFoundException(`Trip with ID ${tripId} not found.`);
+    }
+
+    if (trip.userId.toString() !== userId) {
+      throw new ForbiddenException("You do not have permission to publish this trip.");
+    }
+
+    if (!trip.shareToken) {
+      trip.shareToken = crypto.randomBytes(12).toString("hex");
+    }
+
+    trip.visibility = Visibility.PUBLIC;
+    trip.publishedAt = new Date();
+    await trip.save();
+
+    return {
+      shareToken: trip.shareToken,
+      shareUrl: `/share/${trip.shareToken}`,
+      trip,
+    };
+  }
+
+  async unpublishTripFromCommunity(
+    userId: string,
+    tripId: string
+  ): Promise<{ trip: Trip }> {
+    if (!Types.ObjectId.isValid(tripId)) {
+      throw new BadRequestException("Invalid trip ID format.");
+    }
+
+    const trip = await this.tripModel.findById(tripId).exec();
+    if (!trip) {
+      throw new NotFoundException(`Trip with ID ${tripId} not found.`);
+    }
+
+    if (trip.userId.toString() !== userId) {
+      throw new ForbiddenException("You do not have permission to modify this trip.");
+    }
+
+    trip.visibility = Visibility.PRIVATE;
+    await trip.save();
+
+    return { trip };
   }
 
   async getPublicTripByToken(shareToken: string): Promise<any> {
@@ -878,5 +936,108 @@ export class TripsService {
 
     const saved = await newTrip.save();
     return saved;
+  }
+
+  async getCommunityFeed(
+    sort: string = "newest",
+    limit: number = 20,
+    currentUserId?: string
+  ): Promise<any[]> {
+    const numLimit = Math.max(1, Math.min(limit, 50));
+    const sortOption: any =
+      sort === "most_liked"
+        ? { likesCount: -1, publishedAt: -1, createdAt: -1 }
+        : { publishedAt: -1, createdAt: -1 };
+
+    const trips = await this.tripModel
+      .find({
+        visibility: Visibility.PUBLIC,
+        shareToken: { $exists: true, $ne: null },
+      })
+      .sort(sortOption)
+      .limit(numLimit)
+      .populate("userId", "firstName lastName username photoUrl")
+      .exec();
+
+    return trips.map((trip: any) => {
+      const isLiked =
+        currentUserId && Array.isArray(trip.likedBy)
+          ? trip.likedBy.some((id: any) => id.toString() === currentUserId)
+          : false;
+
+      return {
+        ...trip.toJSON(),
+        userId: trip.userId,
+        likesCount: trip.likesCount || 0,
+        isLiked: Boolean(isLiked),
+      };
+    });
+  }
+
+  async toggleLike(
+    tripId: string,
+    userId: string
+  ): Promise<{ id: string; likesCount: number; isLiked: boolean }> {
+    if (!Types.ObjectId.isValid(tripId) || !Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException("Invalid trip or user ID.");
+    }
+
+    const trip = await this.tripModel.findById(tripId).exec();
+    if (!trip) {
+      throw new NotFoundException(`Trip with ID ${tripId} not found.`);
+    }
+
+    const userObjId = new Types.ObjectId(userId);
+    const likedBy = trip.likedBy || [];
+    const alreadyLiked = likedBy.some((id) => id.toString() === userId);
+
+    let isLiked = false;
+    if (alreadyLiked) {
+      trip.likedBy = likedBy.filter((id) => id.toString() !== userId);
+      trip.likesCount = Math.max(0, (trip.likesCount || 1) - 1);
+      isLiked = false;
+    } else {
+      trip.likedBy.push(userObjId);
+      trip.likesCount = (trip.likesCount || 0) + 1;
+      isLiked = true;
+    }
+
+    await trip.save();
+
+    return {
+      id: tripId,
+      likesCount: trip.likesCount || 0,
+      isLiked,
+    };
+  }
+
+  async deleteTrip(
+    userId: string,
+    tripId: string
+  ): Promise<{ success: boolean; message: string; id: string }> {
+    if (!Types.ObjectId.isValid(tripId)) {
+      throw new BadRequestException("Invalid trip ID format.");
+    }
+
+    const trip = await this.tripModel.findById(tripId).exec();
+    if (!trip) {
+      throw new NotFoundException(`Trip with ID ${tripId} not found.`);
+    }
+
+    if (trip.userId.toString() !== userId) {
+      throw new ForbiddenException("You do not have permission to delete this trip.");
+    }
+
+    // 1. Delete trip from MongoDB
+    await this.tripModel.findByIdAndDelete(tripId).exec();
+
+    // 2. Cascade delete all expenses recorded under this trip
+    await this.expenseModel.deleteMany({ tripId: new Types.ObjectId(tripId) }).exec();
+
+    return {
+      success: true,
+      message: "Trip cancelled and permanently deleted from database.",
+      id: tripId,
+    };
   }
 }

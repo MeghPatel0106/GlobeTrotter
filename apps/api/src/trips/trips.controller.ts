@@ -23,6 +23,25 @@ export class TripsController {
   constructor(private readonly tripsService: TripsService) {}
 
   @Public()
+  @Get("community/feed")
+  async getCommunityFeed(
+    @Query("sort") sort?: string,
+    @Query("limit") limit?: string,
+    @CurrentUser("id") currentUserId?: string
+  ) {
+    const numLimit = limit ? parseInt(limit, 10) : 20;
+    return this.tripsService.getCommunityFeed(sort || "newest", numLimit, currentUserId);
+  }
+
+  @Post(":id/like")
+  async toggleLike(
+    @CurrentUser("id") userId: string,
+    @Param("id") tripId: string
+  ) {
+    return this.tripsService.toggleLike(tripId, userId);
+  }
+
+  @Public()
   @Get("share/:token")
   async getPublicTrip(@Param("token") token: string) {
     return this.tripsService.getPublicTripByToken(token);
@@ -42,6 +61,22 @@ export class TripsController {
     @Param("id") tripId: string
   ) {
     return this.tripsService.generateShareToken(userId, tripId);
+  }
+
+  @Post(":id/publish")
+  async publishTripToCommunity(
+    @CurrentUser("id") userId: string,
+    @Param("id") tripId: string
+  ) {
+    return this.tripsService.publishTripToCommunity(userId, tripId);
+  }
+
+  @Post(":id/unpublish")
+  async unpublishTripFromCommunity(
+    @CurrentUser("id") userId: string,
+    @Param("id") tripId: string
+  ) {
+    return this.tripsService.unpublishTripFromCommunity(userId, tripId);
   }
 
   @Get()
@@ -72,6 +107,14 @@ export class TripsController {
     @Param("id") tripId: string
   ) {
     return this.tripsService.getTripById(tripId, userId);
+  }
+
+  @Delete(":id")
+  async deleteTrip(
+    @CurrentUser("id") userId: string,
+    @Param("id") tripId: string
+  ) {
+    return this.tripsService.deleteTrip(userId, tripId);
   }
 
   @Post(":id/stops")
