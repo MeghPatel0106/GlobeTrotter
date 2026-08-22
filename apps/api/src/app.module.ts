@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
-import { PrismaModule } from "./prisma/prisma.module";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { MongooseModule } from "@nestjs/mongoose";
 import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
 import { UploadsModule } from "./uploads/uploads.module";
@@ -11,7 +11,15 @@ import { UploadsModule } from "./uploads/uploads.module";
       isGlobal: true,
       envFilePath: [".env", "../../.env"],
     }),
-    PrismaModule,
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        uri:
+          configService.get<string>("MONGODB_URI") ||
+          "mongodb://localhost:27017/globetrotter",
+      }),
+      inject: [ConfigService],
+    }),
     AuthModule,
     UsersModule,
     UploadsModule,

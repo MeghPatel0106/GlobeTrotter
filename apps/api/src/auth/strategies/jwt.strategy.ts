@@ -1,8 +1,10 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, isValidObjectId } from "mongoose";
 import { ExtractJwt, Strategy } from "passport-jwt";
-import { PrismaService } from "../../prisma/prisma.service";
+import { User, UserDocument } from "../../schemas/user.schema";
 
 export interface JwtPayload {
   sub: string;
@@ -17,7 +19,7 @@ export interface JwtPayload {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -27,28 +29,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        username: true,
-        email: true,
-        phone: true,
-        photoUrl: true,
-        city: true,
-        country: true,
-        additionalInfo: true,
-        role: true,
-        createdAt: true,
-      },
-    });
+    if (!payload.sub || !isValidObjectId(payload.sub)) {
+      throw new UnauthorizedException("Invalid token identifier.");
+    }
+
+    const user = await this.userModel.findById(payload.sub).exec();
 
     if (!user) {
       throw new UnauthorizedException("User session is invalid or user no longer exists.");
     }
 
-    return user;
+    return user.toJSON();
   }
 }

@@ -45,7 +45,7 @@ export default function AuthLayout({
 
       {/* Main Content Area */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
-        <div className="w-full max-w-[540px] my-4">{children}</div>
+        <div className="w-full max-w-4xl my-4 flex justify-center">{children}</div>
       </main>
 
       {/* Minimal Footer */}

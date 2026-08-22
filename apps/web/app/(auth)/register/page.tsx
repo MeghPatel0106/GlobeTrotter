@@ -14,18 +14,11 @@ import {
   MapPin,
   Globe,
   KeyRound,
-  FileText,
 } from "lucide-react";
 import {
   Button,
   Input,
   Textarea,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
   AvatarUpload,
   MotionStaggerContainer,
   MotionFadeRise,
@@ -77,8 +70,11 @@ export default function RegisterPage() {
       toast.success("Profile photo uploaded.");
       return url;
     } catch {
-      toast.error("Avatar upload failed. Using default avatar.");
-      throw new Error("Upload failed");
+      const localUrl = URL.createObjectURL(file);
+      setPhotoUrl(localUrl);
+      setValue("photoUrl", localUrl);
+      toast.success("Profile photo selected.");
+      return localUrl;
     }
   };
 
@@ -97,8 +93,7 @@ export default function RegisterPage() {
       router.push("/dashboard");
     } catch (err: any) {
       const msg =
-        err?.message ||
-        "Registration failed. Please check your details and try again.";
+        err?.message || "Registration failed. Please check your details and try again.";
       setServerError(msg);
       toast.error(msg);
     } finally {
@@ -107,47 +102,49 @@ export default function RegisterPage() {
   };
 
   return (
-    <ErrorShake trigger={!!serverError}>
-      <Card className="border border-slate-500/20 bg-ink-900 shadow-2xl">
-        <CardHeader className="space-y-2 pb-4 text-center">
-          <div className="mx-auto w-12 h-12 rounded-full bg-brass-500/10 border border-brass-500/30 flex items-center justify-center text-brass-400 mb-1">
+    <div className="w-full max-w-3xl mx-auto py-4 sm:py-6">
+      <ErrorShake trigger={!!serverError} className="w-full">
+        {/* Page Header (No Card) */}
+        <div className="text-center space-y-2 mb-8">
+          <div className="mx-auto w-12 h-12 rounded-full bg-brass-500/10 border border-brass-500/30 flex items-center justify-center text-brass-400 mb-2">
             <Compass className="w-6 h-6" />
           </div>
-          <CardTitle className="text-2xl font-serif tracking-tight text-parchment-50">
+          <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-parchment-50">
             Begin Your Voyage
-          </CardTitle>
-          <CardDescription className="text-slate-400 text-sm max-w-sm mx-auto">
+          </h1>
+          <p className="text-slate-400 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
             Create your explorer profile to plan, customize, and share
             multi-city journeys across the globe.
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <CardContent className="space-y-4">
-            {/* Server Error Notice */}
-            {serverError && (
-              <div
-                className="p-3 rounded-[8px] bg-coral-500/10 border border-coral-500/40 text-coral-500 text-xs leading-relaxed"
-                role="alert"
-              >
-                {serverError}
-              </div>
-            )}
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
+          {/* Server Error Notice */}
+          {serverError && (
+            <div
+              className="p-3.5 rounded-[8px] bg-coral-500/10 border border-coral-500/40 text-coral-500 text-xs sm:text-sm leading-relaxed"
+              role="alert"
+            >
+              {serverError}
+            </div>
+          )}
 
-            <MotionStaggerContainer staggerDelay={0.06}>
-              {/* Photo Upload */}
-              <MotionFadeRise className="flex justify-center mb-6">
-                <AvatarUpload
-                  value={photoUrl}
-                  firstName={firstName}
-                  lastName={lastName}
-                  onFileSelect={handleAvatarUpload}
-                  disabled={isSubmitting}
-                />
-              </MotionFadeRise>
+          <MotionStaggerContainer staggerDelay={0.04}>
+            {/* Photo Upload Section */}
+            <MotionFadeRise className="flex justify-center mb-8">
+              <AvatarUpload
+                value={photoUrl}
+                firstName={firstName}
+                lastName={lastName}
+                onFileSelect={handleAvatarUpload}
+                disabled={isSubmitting}
+              />
+            </MotionFadeRise>
 
-              {/* Names row */}
-              <MotionFadeRise className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            {/* Form Grid Sections */}
+            <div className="space-y-4">
+              {/* Row 1: First Name & Last Name */}
+              <MotionFadeRise className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   {...register("firstName")}
                   label="First Name"
@@ -168,8 +165,8 @@ export default function RegisterPage() {
                 />
               </MotionFadeRise>
 
-              {/* Username & Email */}
-              <MotionFadeRise className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              {/* Row 2: Username & Email Address */}
+              <MotionFadeRise className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   {...register("username")}
                   label="Username"
@@ -191,8 +188,8 @@ export default function RegisterPage() {
                 />
               </MotionFadeRise>
 
-              {/* Phone */}
-              <MotionFadeRise className="mb-3">
+              {/* Row 3: Phone Number & City */}
+              <MotionFadeRise className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   {...register("phone")}
                   type="tel"
@@ -202,10 +199,6 @@ export default function RegisterPage() {
                   leftIcon={<Phone className="w-4 h-4" />}
                   disabled={isSubmitting}
                 />
-              </MotionFadeRise>
-
-              {/* City & Country */}
-              <MotionFadeRise className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                 <Input
                   {...register("city")}
                   label="City"
@@ -214,6 +207,10 @@ export default function RegisterPage() {
                   leftIcon={<MapPin className="w-4 h-4" />}
                   disabled={isSubmitting}
                 />
+              </MotionFadeRise>
+
+              {/* Row 4: Country */}
+              <MotionFadeRise>
                 <Input
                   {...register("country")}
                   label="Country"
@@ -224,8 +221,8 @@ export default function RegisterPage() {
                 />
               </MotionFadeRise>
 
-              {/* Additional Information / Bio */}
-              <MotionFadeRise className="mb-3">
+              {/* Row 5: Additional Information */}
+              <MotionFadeRise>
                 <Textarea
                   {...register("additionalInfo")}
                   label="Additional Information / Travel Style"
@@ -236,8 +233,8 @@ export default function RegisterPage() {
                 />
               </MotionFadeRise>
 
-              {/* Password & Confirm Password */}
-              <MotionFadeRise className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              {/* Row 6: Password & Confirm Password */}
+              <MotionFadeRise className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 <Input
                   {...register("password")}
                   type="password"
@@ -261,40 +258,38 @@ export default function RegisterPage() {
                   disabled={isSubmitting}
                 />
               </MotionFadeRise>
+            </div>
 
-              {/* Route Thread Divider */}
-              <MotionFadeRise className="my-2">
-                <RouteThreadDecoration />
-              </MotionFadeRise>
+            {/* Route Thread Divider */}
+            <MotionFadeRise className="my-6">
+              <RouteThreadDecoration />
+            </MotionFadeRise>
 
-              {/* Submit Button */}
-              <MotionFadeRise className="pt-2">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="md"
-                  className="w-full"
-                  isLoading={isSubmitting}
-                >
-                  Create account
-                </Button>
-              </MotionFadeRise>
-            </MotionStaggerContainer>
-          </CardContent>
-
-          <CardFooter className="flex flex-col gap-2 pt-0 pb-6 text-center border-t border-slate-500/10 mt-2">
-            <p className="text-xs text-slate-400 mt-4">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="font-medium text-brass-400 hover:text-brass-300 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brass-500 rounded"
+            {/* Submit Button & Login Link */}
+            <MotionFadeRise className="space-y-4">
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                className="w-full h-12 text-base font-semibold"
+                isLoading={isSubmitting}
               >
-                Log in
-              </Link>
-            </p>
-          </CardFooter>
+                Create account
+              </Button>
+
+              <p className="text-xs sm:text-sm text-slate-400 text-center pt-2">
+                Already have an account?{" "}
+                <Link
+                  href="/login"
+                  className="font-medium text-brass-400 hover:text-brass-300 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brass-500 rounded"
+                >
+                  Log in
+                </Link>
+              </p>
+            </MotionFadeRise>
+          </MotionStaggerContainer>
         </form>
-      </Card>
-    </ErrorShake>
+      </ErrorShake>
+    </div>
   );
 }

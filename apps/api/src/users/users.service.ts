@@ -1,35 +1,26 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, isValidObjectId } from "mongoose";
+import { User, UserDocument } from "../schemas/user.schema";
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>
+  ) {}
 
   async getMe(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        username: true,
-        email: true,
-        phone: true,
-        photoUrl: true,
-        city: true,
-        country: true,
-        additionalInfo: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    if (!userId || !isValidObjectId(userId)) {
+      throw new BadRequestException("Invalid user ID.");
+    }
+
+    const user = await this.userModel.findById(userId).exec();
 
     if (!user) {
       throw new NotFoundException("User not found.");
     }
 
-    return user;
+    return user.toJSON();
   }
 
   async updateMe(
@@ -44,34 +35,27 @@ export class UsersService {
       additionalInfo?: string;
     }
   ) {
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        ...(data.firstName && { firstName: data.firstName.trim() }),
-        ...(data.lastName && { lastName: data.lastName.trim() }),
-        ...(data.phone !== undefined && { phone: data.phone?.trim() || null }),
-        ...(data.photoUrl !== undefined && { photoUrl: data.photoUrl?.trim() || null }),
-        ...(data.city !== undefined && { city: data.city?.trim() || null }),
-        ...(data.country !== undefined && { country: data.country?.trim() || null }),
-        ...(data.additionalInfo !== undefined && { additionalInfo: data.additionalInfo?.trim() || null }),
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        username: true,
-        email: true,
-        phone: true,
-        photoUrl: true,
-        city: true,
-        country: true,
-        additionalInfo: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    if (!userId || !isValidObjectId(userId)) {
+      throw new BadRequestException("Invalid user ID.");
+    }
 
-    return user;
+    const updatePayload: Record<string, any> = {};
+    if (data.firstName !== undefined) updatePayload.firstName = data.firstName.trim();
+    if (data.lastName !== undefined) updatePayload.lastName = data.lastName.trim();
+    if (data.phone !== undefined) updatePayload.phone = data.phone?.trim() || null;
+    if (data.photoUrl !== undefined) updatePayload.photoUrl = data.photoUrl?.trim() || null;
+    if (data.city !== undefined) updatePayload.city = data.city?.trim() || null;
+    if (data.country !== undefined) updatePayload.country = data.country?.trim() || null;
+    if (data.additionalInfo !== undefined) updatePayload.additionalInfo = data.additionalInfo?.trim() || null;
+
+    const user = await this.userModel
+      .findByIdAndUpdate(userId, { $set: updatePayload }, { new: true })
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException("User not found.");
+    }
+
+    return user.toJSON();
   }
 }

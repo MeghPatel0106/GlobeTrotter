@@ -7,7 +7,7 @@
 
 ## 0. Assumptions & Scope Note
 
-The problem statement doesn't mandate Odoo's own framework (Python/OWL) — it only asks for "a well-designed relational database and a smooth frontend experience." This blueprint therefore assumes a **modern independent full-stack web app** (not an Odoo module), since that gives the fastest path to a polished, animated, fully responsive UI in hackathon time. If the judging rubric specifically requires Odoo technology (Python + OWL + PostgreSQL via Odoo ORM), see the callout in Section 9 for the substitution path — the data model and feature set in this document stay valid either way.
+The problem statement doesn't mandate Odoo's own framework (Python/OWL) — it asks for a robust data architecture and a smooth frontend experience. This blueprint assumes a **modern independent full-stack web app** powered by Next.js 15, NestJS, and **MongoDB (Mongoose)** for high-velocity itinerary modeling, schema flexibility, and rich document relationships.
 
 ---
 
@@ -333,16 +333,15 @@ For each screen: purpose, components, states, and the API calls it makes. Use th
 | **Calendar** | `react-day-picker` (date range pickers in Create Trip/Sections) + a custom month-grid component or FullCalendar for Screen 11 | FullCalendar handles multi-day event spans out of the box, which the Calendar View needs. |
 | **Maps (optional polish)** | Mapbox GL JS or Leaflet + `react-leaflet` | Nice-to-have pin map on City Search results; skip if time-constrained. |
 | **Backend** | Node.js + NestJS (TypeScript) | Modular architecture (modules/controllers/services) demos well and maps 1:1 to the resource list in Section 6 — good for judges evaluating architecture, not just UI. |
-| **ORM / DB** | PostgreSQL + Prisma | Prisma's schema file *is* your ER diagram in code — fast to iterate, generates typed client, easy migrations under hackathon time pressure. |
+| **Database / ODM** | MongoDB + Mongoose | MongoDB document model provides clean subdocument nesting for Stops and ItineraryItems, high-speed indexed lookups, and flexible document schema. |
 | **Auth** | JWT (access + refresh) via NestJS Passport strategy, or Auth.js/Clerk if you want to cut auth build time to near-zero | Clerk/Auth.js recommended if the team is small and time-boxed; roll your own JWT if a judge specifically wants to see custom auth logic. |
 | **File storage** | Cloudinary (image transforms built-in — handy for avatar/cover-photo circles and responsive banner images) | |
-| **Real-time (Community tab, optional)** | Socket.io or Supabase Realtime | Only if time allows; feed can be polling-based (`TanStack Query` refetch interval) as a fallback. |
-| **Search** | Postgres full-text search (`tsvector`) for City/Activity search initially; swap to Meilisearch if fuzzy/typo-tolerant search becomes a priority | Avoid over-engineering search infra in a hackathon. |
+| **Search** | MongoDB text indexes & regex search for City/Activity discovery | Fast, native, and zero additional infrastructure. |
 | **Testing** | Vitest + React Testing Library (unit), Playwright (e2e smoke test of the core flow: register → create trip → build itinerary → view budget) | One good Playwright script covering the golden path is worth more to a demo than broad unit coverage. |
 | **Monorepo** | Turborepo — `apps/web`, `apps/api`, `packages/ui`, `packages/config` | Keeps design tokens and types shared between frontend and backend. |
-| **Hosting/CI** | Vercel (web) + Railway or Render (API + Postgres) + GitHub Actions for lint/test on PR | Fast, judge-shareable public URLs for both the app and the shared/public itinerary links. |
+| **Hosting/CI** | Vercel (web) + Render/Railway (API + MongoDB Atlas) + GitHub Actions for lint/test on PR | Fast, judge-shareable public URLs for both the app and the shared/public itinerary links. |
 
-**If Odoo's own framework is actually required:** swap the frontend to Odoo's OWL (Owl Web Library) components + QWeb templates, backend to Odoo's Python ORM models (`models.Model` classes mirroring Section 5's entities), and keep PostgreSQL as-is (Odoo already runs on it). The ER diagram, feature list, and phase plan below all remain valid — only the implementation layer changes.
+**If Odoo's own framework is actually required:** swap the frontend to Odoo's OWL (Owl Web Library) components + QWeb templates, backend to Odoo's Python ORM models (`models.Model` classes mirroring Section 5's entities). The ER diagram, feature list, and phase plan below all remain valid — only the implementation layer changes.
 
 ---
 
@@ -409,9 +408,9 @@ graph LR
 Each phase below is written so you can copy its block directly into Antigravity/ChatGPT as the *context*, then ask "give me a prompt to build this phase" or "implement this phase."
 
 ### Phase 0 — Foundations
-- **Goal:** repo scaffold, design tokens, Prisma schema migrated, empty route shells for all 13 screens, auth middleware stub.
-- **Context to paste:** Section 5 (full ER diagram), Section 8 (tech stack table), Section 9 (design tokens).
-- **Done when:** `prisma migrate dev` runs clean; every route in the nav graph renders a placeholder page.
+- **Goal:** repo scaffold, design tokens, MongoDB Mongoose schemas connected, empty route shells for all 13 screens, auth middleware stub.
+- **Deliverables:** Turborepo monorepo, NestJS API with Mongoose connection, Next.js 15 frontend, shared UI package with Atlas & Ink design tokens.
+- **Done when:** MongoDB connection is verified; every route in the nav graph renders cleanly.
 
 ### Phase 1 — Auth (Screens 1–2)
 - **Context to paste:** Screen 1 & 2 rows from Section 6, `USER` entity from Section 5.
@@ -539,7 +538,7 @@ globetrotter/
 │       ├── src/activities/
 │       ├── src/community/
 │       ├── src/admin/
-│       └── prisma/schema.prisma
+│       └── schemas/*.schema.ts
 ├── packages/
 │   ├── ui/                  # shared shadcn-based component library
 │   └── config/              # shared eslint/tsconfig/tailwind config
