@@ -74,7 +74,7 @@ function LoginForm() {
 
   return (
     <ErrorShake trigger={!!serverError}>
-      <Card className="border border-slate-500/20 bg-ink-900/95 shadow-2xl backdrop-blur-md">
+      <Card className="border border-slate-500/20 bg-ink-900 shadow-2xl">
         <CardHeader className="space-y-2 pb-4 text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-brass-500/10 border border-brass-500/30 flex items-center justify-center text-brass-400 mb-1">
             <Compass className="w-6 h-6" />
@@ -132,11 +132,11 @@ function LoginForm() {
                     leftIcon={<KeyRound className="w-4 h-4" />}
                     disabled={isSubmitting}
                   />
-                  <div className="flex justify-end pt-0.5">
+                  <div className="flex justify-end pt-1">
                     <button
                       type="button"
                       onClick={handleForgotPassword}
-                      className="text-xs text-brass-400 hover:text-brass-300 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brass-500 rounded cursor-pointer"
+                      className="text-xs text-brass-400 hover:text-brass-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 rounded py-1 px-1.5 cursor-pointer"
                     >
                       Forgot password?
                     </button>

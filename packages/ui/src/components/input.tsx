@@ -29,6 +29,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       disabled,
       required,
       id,
+      style,
       ...props
     },
     ref
@@ -41,6 +42,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const [showPassword, setShowPassword] = React.useState(false);
     const effectiveType = isPassword ? (showPassword ? "text" : "password") : type;
 
+    const hasRightContent = isPassword || rightIcon || error;
+
     return (
       <div className="w-full flex flex-col gap-1.5">
         {label && (
@@ -48,9 +51,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {label}
           </Label>
         )}
-        <div className="relative flex items-center">
+        <div className="relative flex items-center w-full">
           {leftIcon && (
-            <div className="absolute left-3.5 flex items-center pointer-events-none text-slate-500">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-slate-500 z-10">
               {leftIcon}
             </div>
           )}
@@ -62,14 +65,19 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             required={required}
             aria-invalid={!!error}
             aria-describedby={error ? errorId : helperText ? helperId : undefined}
+            style={{
+              paddingLeft: leftIcon ? "2.75rem" : "0.875rem",
+              paddingRight: hasRightContent ? "2.75rem" : "0.875rem",
+              ...style,
+            }}
             className={cn(
-              "w-full h-11 px-3.5 py-2 text-sm bg-ink-900/90 text-parchment-50 placeholder:text-slate-500 rounded-[8px] border transition-all duration-160",
+              "w-full h-11 py-2 text-sm bg-ink-900 text-parchment-50 placeholder:text-slate-500 rounded-[8px] border transition-colors duration-160",
               "border-slate-500/25 hover:border-slate-500/40",
               "focus:outline-none focus:border-brass-500 focus:ring-2 focus:ring-brass-500/20",
               "disabled:bg-ink-950/60 disabled:border-slate-500/10 disabled:text-slate-500 disabled:cursor-not-allowed",
-              error && "border-coral-500/80 focus:border-coral-500 focus:ring-coral-500/20 pr-10",
-              leftIcon && "pl-10",
-              (rightIcon || isPassword) && "pr-10",
+              error && "border-coral-500/80 focus:border-coral-500 focus:ring-coral-500/20",
+              leftIcon ? "pl-11" : "pl-3.5",
+              hasRightContent ? "pr-11" : "pr-3.5",
               className
             )}
             {...props}
@@ -79,7 +87,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-3 p-1 text-slate-500 hover:text-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 rounded"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center text-slate-500 hover:text-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 rounded cursor-pointer z-10"
               tabIndex={-1}
             >
               {showPassword ? (
@@ -90,12 +98,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </button>
           )}
           {!isPassword && rightIcon && (
-            <div className="absolute right-3 flex items-center pointer-events-none text-slate-500">
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-slate-500 z-10">
               {rightIcon}
             </div>
           )}
           {error && !isPassword && !rightIcon && (
-            <div className="absolute right-3 flex items-center pointer-events-none text-coral-500">
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-coral-500 z-10">
               <AlertCircle className="h-4 w-4" aria-hidden="true" />
             </div>
           )}

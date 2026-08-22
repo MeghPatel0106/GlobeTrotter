@@ -55,7 +55,6 @@ export function AvatarUpload({
     setUploadError(null);
     setIsUploading(true);
 
-    // Create local preview immediately
     const localUrl = URL.createObjectURL(file);
     setPreviewUrl(localUrl);
 
@@ -67,7 +66,6 @@ export function AvatarUpload({
           onChange?.(uploadedUrl);
         }
       } else {
-        // Fallback: convert to base64 data URL if no direct uploader
         const reader = new FileReader();
         reader.onloadend = () => {
           const result = reader.result as string;
@@ -89,25 +87,29 @@ export function AvatarUpload({
   };
 
   return (
-    <div className={cn("flex flex-col items-center gap-2", className)}>
+    <div className={cn("flex flex-col items-center gap-3", className)}>
+      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/png,image/jpeg,image/webp"
         onChange={handleFileChange}
         disabled={disabled || isUploading}
-        className="sr-only"
-        aria-label="Upload profile photo"
+        style={{ display: "none" }}
+        tabIndex={-1}
+        aria-hidden="true"
       />
-      <div className="relative group">
+
+      <div className="relative">
         <button
           type="button"
           onClick={handleTrigger}
           disabled={disabled || isUploading}
+          style={{ width: 96, height: 96 }}
           className={cn(
-            "relative w-24 h-24 rounded-full overflow-hidden flex items-center justify-center transition-all duration-240 border-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950",
+            "relative w-24 h-24 rounded-full overflow-hidden flex flex-col items-center justify-center transition-colors border-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950 shrink-0",
             previewUrl
-              ? "border-brass-500/80 hover:border-brass-400 shadow-md"
+              ? "border-brass-500 hover:border-brass-400 shadow-md"
               : "border-dashed border-slate-500/40 bg-ink-850 hover:border-brass-500/60 hover:bg-ink-800",
             uploadError && "border-coral-500",
             disabled && "opacity-50 cursor-not-allowed"
@@ -130,40 +132,36 @@ export function AvatarUpload({
               {initials}
             </span>
           ) : (
-            <User className="w-9 h-9 text-slate-500" aria-hidden="true" />
+            <div className="flex flex-col items-center justify-center gap-1 text-slate-400">
+              <Camera className="w-6 h-6 text-brass-400" aria-hidden="true" />
+              <span className="text-[10px] font-medium text-slate-300">Add Photo</span>
+            </div>
           )}
-
-          {/* Hover overlay with camera icon */}
-          <div className="absolute inset-0 bg-ink-950/70 flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-160">
-            <Camera className="w-5 h-5 text-brass-400" />
-            <span className="text-[10px] text-parchment-50 font-medium">
-              {previewUrl ? "Change" : "Add Photo"}
-            </span>
-          </div>
 
           {/* Uploading progress spinner */}
           {isUploading && (
-            <div className="absolute inset-0 bg-ink-950/80 flex items-center justify-center">
+            <div className="absolute inset-0 bg-ink-950/85 flex items-center justify-center">
               <Loader2 className="w-6 h-6 animate-spin text-brass-400" />
             </div>
           )}
         </button>
 
-        {/* Small action badge */}
+        {/* Action badge */}
         <div
           onClick={handleTrigger}
-          className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-brass-500 text-ink-950 flex items-center justify-center shadow-md border-2 border-ink-950 cursor-pointer hover:bg-brass-400 transition-colors"
+          style={{ width: 32, height: 32 }}
+          className="absolute -bottom-0.5 -right-0.5 w-8 h-8 rounded-full bg-brass-500 text-ink-950 flex items-center justify-center shadow-md border-2 border-ink-950 cursor-pointer hover:bg-brass-400 transition-colors"
           aria-hidden="true"
         >
-          <Camera className="w-4 h-4" />
+          <Camera className="w-4 h-4 text-ink-950" />
         </div>
       </div>
 
-      <div className="text-center">
-        <span className="text-xs text-slate-400 block font-medium">
+      <div className="text-center space-y-0.5">
+        <span className="text-xs text-parchment-50 font-medium block">
           Profile Photo
         </span>
-        <span className="text-[11px] text-slate-500">
+        <span className="text-[11px] font-mono text-slate-400 block">
           JPG, PNG, or WebP (max 5MB)
         </span>
       </div>

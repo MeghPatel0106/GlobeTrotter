@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@source "../../../packages/ui/src";
+@source "../../../packages/ui";
+@source "../app";
+@source "./";
 
 @layer theme {
   :root {
@@ -80,6 +84,16 @@ body {
 *:focus-visible {
   outline: 2px solid var(--color-brass-500);
   outline-offset: 2px;
+}
+
+/* Touch targets and mobile container constraints */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
 /* Reduced Motion Override */

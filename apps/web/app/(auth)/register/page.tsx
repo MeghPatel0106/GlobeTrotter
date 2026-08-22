@@ -108,7 +108,7 @@ export default function RegisterPage() {
 
   return (
     <ErrorShake trigger={!!serverError}>
-      <Card className="border border-slate-500/20 bg-ink-900/95 shadow-2xl backdrop-blur-md">
+      <Card className="border border-slate-500/20 bg-ink-900 shadow-2xl">
         <CardHeader className="space-y-2 pb-4 text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-brass-500/10 border border-brass-500/30 flex items-center justify-center text-brass-400 mb-1">
             <Compass className="w-6 h-6" />
