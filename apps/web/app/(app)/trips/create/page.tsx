@@ -22,6 +22,8 @@ import {
   X,
   Plus,
   Loader2,
+  CheckCircle2,
+  Globe2,
 } from "lucide-react";
 import {
   Card,
@@ -41,6 +43,19 @@ import {
 import { citiesApi, tripsApi, City, Activity } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
+interface SelectedPlace {
+  id: string;
+  name: string;
+  cityId?: string;
+  cityName: string;
+  country?: string;
+  category?: string;
+  rating?: number;
+  cost?: number;
+  durationMinutes?: number;
+  isCustom?: boolean;
+}
+
 function CreateTripForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,16 +66,29 @@ function CreateTripForm() {
   const initialCityName = searchParams.get("cityName") || "";
   const initialCountry = searchParams.get("country") || "";
 
+  // Country selection state (separate dropdown, chosen BEFORE cities)
+  const [selectedCountry, setSelectedCountry] = React.useState<string>(initialCountry || "");
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = React.useState(false);
+  const countryDropdownRef = React.useRef<HTMLDivElement>(null);
+
   // Multi-city destinations state
   const [selectedCities, setSelectedCities] = React.useState<City[]>([]);
   const [cityInputText, setCityInputText] = React.useState("");
   const [isCityDropdownOpen, setIsCityDropdownOpen] = React.useState(false);
+  const [isAddingNextCity, setIsAddingNextCity] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  // Selected activities and custom places state
+  const [selectedPlaces, setSelectedPlaces] = React.useState<SelectedPlace[]>([]);
+  const [customPlaceText, setCustomPlaceText] = React.useState("");
+  const [customPlaceTargetCity, setCustomPlaceTargetCity] = React.useState<string>("");
+  const [suggestionFilterText, setSuggestionFilterText] = React.useState("");
 
   // Auto-fill initial city if coming from a "Plan Trip" link
   React.useEffect(() => {
     if (initialCityName && selectedCities.length === 0) {
+      if (initialCountry) setSelectedCountry(initialCountry);
       setSelectedCities([
         {
           id: initialCityId || `temp-${Date.now()}`,
@@ -119,41 +147,59 @@ function CreateTripForm() {
     }
   }, [isAuthLoading, isAuthenticated, router]);
 
-  // Click outside to close city dropdown
+  // Click outside to close city dropdown or country dropdown
   React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsCityDropdownOpen(false);
+      }
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target as Node)) {
+        setIsCountryDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Live search for cities
+  // Fetch available countries from DB
+  const { data: availableCountries = [] } = useQuery({
+    queryKey: ["cities", "countries"],
+    queryFn: () => citiesApi.getCountries(),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Live search for cities (filtered strictly by selectedCountry)
   const { data: searchResults = [], isLoading: isSearchLoading } = useQuery({
-    queryKey: ["cities", "search", cityInputText],
-    queryFn: () => citiesApi.search(cityInputText.trim(), 8),
-    enabled: isCityDropdownOpen && cityInputText.trim().length > 0,
+    queryKey: ["cities", "search", cityInputText, selectedCountry],
+    queryFn: () =>
+      citiesApi.search(cityInputText.trim(), 8, selectedCountry || undefined),
+    enabled: !!selectedCountry && isCityDropdownOpen && cityInputText.trim().length > 0,
     staleTime: 30 * 1000,
   });
 
-  // Top suggestions when search is empty
+  // Top suggestions when search is empty (filtered strictly by selectedCountry)
   const { data: topCities = [] } = useQuery({
-    queryKey: ["cities", "top-gateway-suggestions"],
-    queryFn: () => citiesApi.getTop(6),
-    enabled: isCityDropdownOpen && cityInputText.trim().length === 0,
+    queryKey: ["cities", "top-gateway-suggestions", selectedCountry],
+    queryFn: () => citiesApi.getTop(6, selectedCountry || undefined),
+    enabled: !!selectedCountry && isCityDropdownOpen && cityInputText.trim().length === 0,
     staleTime: 5 * 60 * 1000,
   });
 
-  // Curated activities for all selected cities
+  // Curated activities for all selected cities (which belong to the same country)
   const { data: multiCityActivities = [], isLoading: isActivitiesLoading } = useQuery({
     queryKey: ["cities", "multi-activities", selectedCities.map((c) => c.id).join(",")],
     queryFn: async () => {
       if (selectedCities.length === 0) return [];
       const validCities = selectedCities.filter((c) => c.id && !c.id.startsWith("temp-"));
       if (validCities.length === 0) return [];
-      const promises = validCities.map((c) => citiesApi.getActivities(c.id, 4));
+      const promises = validCities.map(async (c) => {
+        const list = await citiesApi.getActivities(c.id, 8);
+        return list.map((act) => ({
+          ...act,
+          cityName: c.name,
+          country: c.country,
+        }));
+      });
       const results = await Promise.all(promises);
       return results.flat();
     },
@@ -161,9 +207,38 @@ function CreateTripForm() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Handle changing the country dropdown
+  const handleCountryChange = (country: string) => {
+    if (country === selectedCountry) return;
+    // Reset cities and places when country changes
+    setSelectedCities([]);
+    setSelectedPlaces([]);
+    setSelectedCountry(country);
+    setCityInputText("");
+    setIsAddingNextCity(false);
+    setIsCityDropdownOpen(false);
+    setIsCountryDropdownOpen(false);
+    isTripNameCustomized.current = false;
+    setTripName("");
+    toast.success(`Destination country set to ${country}`);
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.country;
+      return next;
+    });
+  };
+
   // Handle selecting a city from autocomplete
   const handleSelectCity = (city: City) => {
-    // Prevent duplicate city selection
+    // Safety check — should never happen since dropdown is already filtered
+    if (selectedCountry && city.country.toLowerCase() !== selectedCountry.toLowerCase()) {
+      toast.error(
+        `This trip is set to ${selectedCountry}. Choose a ${selectedCountry} city.`
+      );
+      setCityInputText("");
+      return;
+    }
+
     const isAlreadySelected = selectedCities.some(
       (c) => c.name.toLowerCase() === city.name.toLowerCase() || (c.id && c.id === city.id)
     );
@@ -171,7 +246,6 @@ function CreateTripForm() {
     if (isAlreadySelected) {
       toast.error(`${city.name} is already in your destination sequence.`);
       setCityInputText("");
-      inputRef.current?.focus();
       return;
     }
 
@@ -180,17 +254,16 @@ function CreateTripForm() {
     updateTripNameFromCities(updated);
     setCityInputText("");
     setIsCityDropdownOpen(false);
+    setIsAddingNextCity(false);
 
     setErrors((prev) => {
       const next = { ...prev };
       delete next.cities;
       return next;
     });
-
-    inputRef.current?.focus();
   };
 
-  // Handle removing a city
+  // Handle removing a city (country stays — user changes country separately)
   const handleRemoveCity = (cityToRemove: City, e?: React.MouseEvent) => {
     e?.stopPropagation();
     const updated = selectedCities.filter(
@@ -198,14 +271,105 @@ function CreateTripForm() {
     );
     setSelectedCities(updated);
     updateTripNameFromCities(updated);
-    inputRef.current?.focus();
+
+    // Also remove places associated with this removed city
+    setSelectedPlaces((prev) =>
+      prev.filter((p) => p.cityName.toLowerCase() !== cityToRemove.name.toLowerCase())
+    );
   };
 
-  // Handle keyboard interaction (Backspace to remove last city)
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && cityInputText === "" && selectedCities.length > 0) {
-      handleRemoveCity(selectedCities[selectedCities.length - 1]);
+  // Toggle selection of a suggested activity
+  const handleTogglePlace = (
+    act: Activity & { cityName?: string; country?: string },
+    cityName: string,
+    cityCountry: string,
+    cityId?: string
+  ) => {
+    const isAlreadySelected = selectedPlaces.some(
+      (p) =>
+        p.name.toLowerCase() === act.name.toLowerCase() &&
+        p.cityName.toLowerCase() === cityName.toLowerCase()
+    );
+
+    if (isAlreadySelected) {
+      setSelectedPlaces((prev) =>
+        prev.filter(
+          (p) =>
+            !(
+              p.name.toLowerCase() === act.name.toLowerCase() &&
+              p.cityName.toLowerCase() === cityName.toLowerCase()
+            )
+        )
+      );
+      toast.info(`Removed "${act.name}" from ${cityName}`);
+    } else {
+      const newPlace: SelectedPlace = {
+        id: act.id,
+        name: act.name,
+        cityId: cityId || act.cityId,
+        cityName,
+        country: cityCountry,
+        category: act.category,
+        rating: act.rating,
+        cost: act.cost,
+        durationMinutes: act.durationMinutes,
+        isCustom: false,
+      };
+      setSelectedPlaces((prev) => [...prev, newPlace]);
+      toast.success(`Added "${act.name}" to ${cityName}!`);
     }
+  };
+
+  // Handle adding custom place (constrained to selected country's cities)
+  const handleAddCustomPlace = (customName?: string) => {
+    const nameToAdd = (customName || customPlaceText).trim();
+    if (!nameToAdd) return;
+
+    if (selectedCities.length === 0) {
+      toast.error("Please select at least 1 destination city first.");
+      return;
+    }
+
+    const targetCity =
+      selectedCities.find(
+        (c) => c.name === customPlaceTargetCity || c.id === customPlaceTargetCity
+      ) ||
+      (activeSuggestionCityId !== "all"
+        ? selectedCities.find((c) => c.id === activeSuggestionCityId)
+        : null) ||
+      selectedCities[0];
+
+    const isAlreadySelected = selectedPlaces.some(
+      (p) =>
+        p.name.toLowerCase() === nameToAdd.toLowerCase() &&
+        p.cityName.toLowerCase() === targetCity.name.toLowerCase()
+    );
+
+    if (isAlreadySelected) {
+      toast.error(`"${nameToAdd}" is already in ${targetCity.name}'s places.`);
+      return;
+    }
+
+    const newCustomPlace: SelectedPlace = {
+      id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      name: nameToAdd,
+      cityId:
+        targetCity.id && !targetCity.id.startsWith("temp-") ? targetCity.id : undefined,
+      cityName: targetCity.name,
+      country: targetCity.country,
+      category: "Custom Place",
+      isCustom: true,
+    };
+
+    setSelectedPlaces((prev) => [...prev, newCustomPlace]);
+    setCustomPlaceText("");
+    setSuggestionFilterText("");
+    toast.success(`Added "${nameToAdd}" to ${targetCity.name}!`);
+  };
+
+  // Handle removing a selected place
+  const handleRemovePlace = (placeId: string) => {
+    setSelectedPlaces((prev) => prev.filter((p) => p.id !== placeId));
   };
 
   const validateForm = () => {
@@ -213,6 +377,10 @@ function CreateTripForm() {
 
     if (!tripName.trim()) {
       newErrors.tripName = "Trip name is required.";
+    }
+
+    if (!selectedCountry) {
+      newErrors.country = "Please select a destination country first.";
     }
 
     if (selectedCities.length === 0) {
@@ -253,10 +421,24 @@ function CreateTripForm() {
     setIsSubmitting(true);
 
     try {
+      const placesPayload = selectedPlaces.map((p, idx) => ({
+        activityId: p.isCustom ? undefined : p.id,
+        activityName: p.name,
+        cityId: p.cityId && !p.cityId.startsWith("temp-") ? p.cityId : undefined,
+        cityName: p.cityName,
+        costOverride: p.cost,
+        orderIndex: idx,
+      }));
+
       const cityListPayload = selectedCities.map((c) => ({
         cityId: c.id && !c.id.startsWith("temp-") ? c.id : undefined,
         cityName: c.name,
         country: c.country,
+        places: placesPayload.filter(
+          (p) =>
+            (p.cityId && c.id && p.cityId === c.id) ||
+            p.cityName.toLowerCase() === c.name.toLowerCase()
+        ),
       }));
 
       const payload = {
@@ -264,18 +446,19 @@ function CreateTripForm() {
         startDate,
         endDate,
         cities: cityListPayload,
-        cityId: cityListPayload[0].cityId,
-        cityName: cityListPayload[0].cityName,
-        country: cityListPayload[0].country,
+        places: placesPayload,
+        cityId: cityListPayload[0]?.cityId,
+        cityName: cityListPayload[0]?.cityName,
+        country: cityListPayload[0]?.country,
         sectionBudget: parseFloat(budget),
         notes: notes.trim(),
       };
 
       const createdTrip = await tripsApi.createTrip(payload);
       toast.success(
-        `Expedition created with ${selectedCities.length} destination leg${
+        `Expedition created with ${selectedCities.length} leg${
           selectedCities.length === 1 ? "" : "s"
-        }!`,
+        } in ${selectedCountry}!`,
         { duration: 2500 }
       );
 
@@ -291,13 +474,21 @@ function CreateTripForm() {
 
   // Filter activities shown on right sidebar
   const displayedActivities = React.useMemo(() => {
-    if (activeSuggestionCityId === "all") {
-      return multiCityActivities.slice(0, 6);
+    let list = multiCityActivities;
+    if (activeSuggestionCityId !== "all") {
+      list = list.filter((a) => a.cityId === activeSuggestionCityId);
     }
-    return multiCityActivities
-      .filter((a) => a.cityId === activeSuggestionCityId)
-      .slice(0, 6);
-  }, [multiCityActivities, activeSuggestionCityId]);
+    if (suggestionFilterText.trim()) {
+      const q = suggestionFilterText.toLowerCase();
+      list = list.filter(
+        (a) =>
+          a.name.toLowerCase().includes(q) ||
+          (a.description && a.description.toLowerCase().includes(q)) ||
+          (a.category && a.category.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [multiCityActivities, activeSuggestionCityId, suggestionFilterText]);
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -321,14 +512,14 @@ function CreateTripForm() {
       <div className="border-b border-border pb-5">
         <div className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-primary mb-1">
           <Compass className="w-3.5 h-3.5" />
-          <span>Itinerary Initiation · Multi-City Route</span>
+          <span>Itinerary Initiation · Select Country → Multi-City Route</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
           Chart a New Voyage
         </h1>
         <p className="text-muted-foreground text-sm sm:text-base mt-1 max-w-2xl">
-          Set your journey timeline, choose the places you&apos;re visiting in sequence, and
-          preview handpicked local activities for your multi-city itinerary.
+          Set your journey timeline, choose the destinations for your expedition in sequence, and
+          curate places tailored to your destination country.
         </p>
       </div>
 
@@ -341,7 +532,7 @@ function CreateTripForm() {
             <div className="space-y-1.5">
               <Input
                 label="Expedition / Trip Name"
-                placeholder="e.g. Ahmedabad, Mumbai & Goa Expedition"
+                placeholder="e.g. Grand Tour of Western India or California Roadtrip"
                 value={tripName}
                 onChange={(e) => {
                   isTripNameCustomized.current = true;
@@ -361,208 +552,315 @@ function CreateTripForm() {
               />
             </div>
 
-            {/* SINGLE MULTI-CITY INPUT: Places You're Visiting */}
-            <div className="space-y-1.5 relative" ref={dropdownRef}>
-              <Label required htmlFor="places-visiting-input">
-                Places You&apos;re Visiting
+            {/* STEP 1: SELECT COUNTRY (separate dropdown — must be chosen first) */}
+            <div className="space-y-2 relative" ref={countryDropdownRef}>
+              <Label required htmlFor="country-select">
+                Destination Country
               </Label>
 
-              {/* Single Combined Multi-City Input Container */}
-              <div
-                onClick={() => inputRef.current?.focus()}
-                className={`min-h-[46px] w-full p-2 pl-3.5 rounded-[8px] bg-input-bg border transition-colors flex flex-wrap items-center gap-1.5 cursor-text ${
-                  errors.cities
-                    ? "border-destructive focus-within:ring-2 focus-within:ring-destructive/20"
-                    : isCityDropdownOpen
-                    ? "border-primary ring-2 ring-primary/20"
-                    : "border-input-border hover:border-border"
-                }`}
-              >
-                <MapPin className="w-4 h-4 text-primary shrink-0 mr-1" />
-
-                {/* Selected Cities Displayed as Comma-Separated / Sequential Tags */}
-                {selectedCities.map((city, idx) => (
-                  <span
-                    key={`${city.name}-${idx}`}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-primary/10 border border-primary/25 text-primary text-xs font-semibold select-none animate-in fade-in zoom-in-95 duration-150"
-                  >
-                    <span>{city.name}</span>
-                    <span className="text-[10px] font-mono text-muted-foreground">
-                      ({city.country})
-                    </span>
-                    {idx < selectedCities.length - 1 && (
-                      <span className="text-muted-foreground/60 font-bold ml-0.5">,</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => handleRemoveCity(city, e)}
-                      aria-label={`Remove ${city.name}`}
-                      className="p-0.5 rounded hover:bg-primary/20 text-primary transition-colors cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-
-                {/* Inline '+' Button when 1+ cities selected */}
-                {selectedCities.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsCityDropdownOpen(true);
-                      inputRef.current?.focus();
-                    }}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-xs font-semibold transition-colors cursor-pointer select-none"
-                    title="Add another city"
-                    aria-label="Add another destination"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span className="text-[11px] font-mono">Add</span>
-                  </button>
-                )}
-
-                {/* Integrated Typeahead Input for Continual Searching */}
-                <input
-                  ref={inputRef}
-                  id="places-visiting-input"
-                  type="text"
-                  value={cityInputText}
-                  onFocus={() => setIsCityDropdownOpen(true)}
-                  onChange={(e) => {
-                    setCityInputText(e.target.value);
-                    setIsCityDropdownOpen(true);
-                  }}
-                  onKeyDown={handleKeyDown}
-                  placeholder={
-                    selectedCities.length === 0
-                      ? "Search cities (e.g. Ahmedabad, Mumbai, Goa, Tokyo)..."
-                      : ""
-                  }
+              <div className="relative">
+                <button
+                  type="button"
+                  id="country-select"
+                  onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
                   disabled={isSubmitting}
-                  className={`bg-transparent border-0 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none py-1 px-1.5 ${
-                    selectedCities.length === 0 ? "flex-1 min-w-[200px]" : "w-24 focus:w-44 transition-all"
-                  }`}
-                />
-              </div>
-
-              {errors.cities && (
-                <p
-                  className="text-xs text-destructive flex items-center gap-1 mt-1"
-                  role="alert"
+                  className={`w-full h-11 px-3.5 rounded-[10px] border text-left flex items-center justify-between transition-colors cursor-pointer ${
+                    selectedCountry
+                      ? "bg-surface border-primary/40 text-foreground"
+                      : "bg-input-bg border-input-border text-muted-foreground"
+                  } ${errors.country ? "border-destructive" : ""} hover:border-primary/60`}
                 >
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{errors.cities}</span>
-                </p>
-              )}
+                  <div className="flex items-center gap-2.5">
+                    <Globe2 className={`w-4 h-4 shrink-0 ${selectedCountry ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className={`text-sm ${selectedCountry ? "font-semibold text-foreground" : ""}`}>
+                      {selectedCountry || "Select a country to explore..."}
+                    </span>
+                  </div>
+                  <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${isCountryDropdownOpen ? "rotate-90" : ""}`} />
+                </button>
 
-              {/* Autocomplete Dropdown List */}
-              {isCityDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1.5 max-h-64 overflow-y-auto rounded-[10px] bg-surface border border-border shadow-xl z-50 divide-y divide-border/60">
-                  {isSearchLoading ? (
-                    <div className="p-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                      <span>Searching destinations...</span>
-                    </div>
-                  ) : cityInputText.trim().length > 0 ? (
-                    searchResults.length > 0 ? (
-                      searchResults.map((city) => {
-                        const isSelected = selectedCities.some(
-                          (c) =>
-                            c.name.toLowerCase() === city.name.toLowerCase() ||
-                            (c.id && c.id === city.id)
-                        );
-
+                {/* Country Dropdown List */}
+                {isCountryDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1.5 max-h-64 overflow-y-auto rounded-[10px] bg-surface border border-border shadow-xl z-50 divide-y divide-border/60">
+                    {availableCountries.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                        <span>Loading countries...</span>
+                      </div>
+                    ) : (
+                      availableCountries.map((country) => {
+                        const isActive = selectedCountry === country;
                         return (
                           <button
-                            key={city.id}
+                            key={country}
                             type="button"
-                            onClick={() => handleSelectCity(city)}
+                            onClick={() => handleCountryChange(country)}
                             className={`w-full px-4 py-2.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
-                              isSelected
-                                ? "bg-primary/10 opacity-70"
-                                : "hover:bg-surface-hover"
+                              isActive ? "bg-primary/10" : "hover:bg-surface-hover"
                             }`}
                           >
                             <div className="flex items-center gap-2.5">
-                              <MapPin className="w-4 h-4 text-primary shrink-0" />
-                              <div>
-                                <span className="font-semibold text-sm text-foreground block">
-                                  {city.name}
-                                </span>
-                                <span className="text-xs text-muted-foreground block">
-                                  {city.country}
-                                </span>
-                              </div>
+                              <Globe2 className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                              <span className={`text-sm ${isActive ? "font-bold text-primary" : "font-medium text-foreground"}`}>
+                                {country}
+                              </span>
                             </div>
-                            {isSelected ? (
-                              <span className="text-[10px] font-mono text-primary font-semibold px-2 py-0.5 rounded bg-primary/15">
-                                Added
-                              </span>
-                            ) : (
-                              <span className="text-[11px] font-mono text-muted-foreground">
-                                + Add to Route
-                              </span>
+                            {isActive && (
+                              <Check className="w-4 h-4 text-primary" />
                             )}
                           </button>
                         );
                       })
-                    ) : (
-                      <div className="p-4 text-center text-xs text-muted-foreground">
-                        No destinations found matching &quot;{cityInputText}&quot;.
-                      </div>
-                    )
-                  ) : (
-                    <div>
-                      <div className="px-3.5 py-2 bg-surface-subtle/50 text-[11px] font-mono text-muted-foreground uppercase tracking-wider">
-                        Top Suggested Destinations
-                      </div>
-                      {topCities.map((city) => {
-                        const isSelected = selectedCities.some(
-                          (c) =>
-                            c.name.toLowerCase() === city.name.toLowerCase() ||
-                            (c.id && c.id === city.id)
-                        );
+                    )}
+                  </div>
+                )}
+              </div>
 
-                        return (
-                          <button
-                            key={city.id}
-                            type="button"
-                            onClick={() => handleSelectCity(city)}
-                            className={`w-full px-4 py-2.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
-                              isSelected
-                                ? "bg-primary/10 opacity-70"
-                                : "hover:bg-surface-hover"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <MapPin className="w-4 h-4 text-primary shrink-0" />
-                              <div>
-                                <span className="font-semibold text-sm text-foreground block">
-                                  {city.name}
-                                </span>
-                                <span className="text-xs text-muted-foreground block">
-                                  {city.country}
-                                </span>
-                              </div>
-                            </div>
-                            {isSelected ? (
-                              <span className="text-[10px] font-mono text-primary font-semibold px-2 py-0.5 rounded bg-primary/15">
-                                Added
-                              </span>
-                            ) : (
-                              <span className="text-[11px] font-mono text-primary font-semibold">
-                                + Add
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
+              {errors.country && (
+                <p className="text-xs text-destructive flex items-center gap-1 mt-1" role="alert">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.country}</span>
+                </p>
+              )}
+            </div>
+
+            {/* STEP 2: MULTI-CITY DESTINATION SELECTION (only visible after country is selected) */}
+            {selectedCountry && (
+            <div className="space-y-2 relative" ref={dropdownRef}>
+              <Label required htmlFor="places-visiting-input">
+                Places You&apos;re Visiting in {selectedCountry}
+              </Label>
+
+              {/* City search input (always visible once country is selected) */}
+              {(selectedCities.length === 0 || isAddingNextCity) && (
+                <div className="relative">
+                  <Input
+                    ref={inputRef}
+                    id="places-visiting-input"
+                    autoFocus={isAddingNextCity}
+                    type="text"
+                    value={cityInputText}
+                    onFocus={() => setIsCityDropdownOpen(true)}
+                    onChange={(e) => {
+                      setCityInputText(e.target.value);
+                      setIsCityDropdownOpen(true);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (searchResults.length > 0) {
+                          handleSelectCity(searchResults[0]);
+                        }
+                      }
+                    }}
+                    placeholder={`Search ${selectedCountry} cities (e.g. ${selectedCountry === "India" ? "Ahmedabad, Mumbai, Jaipur" : selectedCountry === "USA" ? "New York, Chicago, LA" : "type a city name"})...`}
+                    leftIcon={<MapPin className="w-4 h-4 text-primary" />}
+                    error={errors.cities}
+                    disabled={isSubmitting}
+                  />
+
+                  {/* Autocomplete Dropdown */}
+                  {isCityDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1.5 max-h-64 overflow-y-auto rounded-[10px] bg-surface border border-border shadow-xl z-50 divide-y divide-border/60">
+                      {isSearchLoading ? (
+                        <div className="p-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                          <span>Searching {selectedCountry} destinations...</span>
+                        </div>
+                      ) : cityInputText.trim().length > 0 ? (
+                        searchResults.length > 0 ? (
+                          searchResults.map((city) => {
+                            const isAlready = selectedCities.some(
+                              (c) => c.name.toLowerCase() === city.name.toLowerCase() || (c.id && c.id === city.id)
+                            );
+                            return (
+                              <button
+                                key={city.id}
+                                type="button"
+                                onClick={() => handleSelectCity(city)}
+                                className={`w-full px-4 py-2.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                                  isAlready ? "bg-primary/10 opacity-70" : "hover:bg-surface-hover"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <MapPin className="w-4 h-4 text-primary shrink-0" />
+                                  <div>
+                                    <span className="font-semibold text-sm text-foreground block">{city.name}</span>
+                                    <span className="text-xs text-muted-foreground block">{city.country}</span>
+                                  </div>
+                                </div>
+                                {isAlready ? (
+                                  <span className="text-[10px] font-mono text-primary font-semibold px-2 py-0.5 rounded bg-primary/15">Added</span>
+                                ) : (
+                                  <span className="text-[11px] font-mono text-primary font-semibold flex items-center gap-1">
+                                    <Plus className="w-3 h-3" /><span>Select</span>
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <div className="p-4 text-center text-xs text-muted-foreground">
+                            No {selectedCountry} destinations found matching &quot;{cityInputText}&quot;.
+                          </div>
+                        )
+                      ) : (
+                        <div>
+                          <div className="px-3.5 py-2 bg-surface-subtle/50 text-[11px] font-mono text-muted-foreground uppercase tracking-wider">
+                            Popular {selectedCountry} Destinations
+                          </div>
+                          {topCities.map((city) => {
+                            const isAlready = selectedCities.some(
+                              (c) => c.name.toLowerCase() === city.name.toLowerCase() || (c.id && c.id === city.id)
+                            );
+                            return (
+                              <button
+                                key={city.id}
+                                type="button"
+                                onClick={() => handleSelectCity(city)}
+                                className={`w-full px-4 py-2.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                                  isAlready ? "bg-primary/10 opacity-70" : "hover:bg-surface-hover"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <MapPin className="w-4 h-4 text-primary shrink-0" />
+                                  <div>
+                                    <span className="font-semibold text-sm text-foreground block">{city.name}</span>
+                                    <span className="text-xs text-muted-foreground block">{city.country}</span>
+                                  </div>
+                                </div>
+                                {isAlready ? (
+                                  <span className="text-[10px] font-mono text-primary font-semibold px-2 py-0.5 rounded bg-primary/15">Added</span>
+                                ) : (
+                                  <span className="text-[11px] font-mono text-primary font-semibold flex items-center gap-1">
+                                    <Plus className="w-3 h-3" /><span>Select</span>
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Cancel button when adding next city */}
+                  {isAddingNextCity && selectedCities.length > 0 && (
+                    <div className="flex justify-end pt-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setIsAddingNextCity(false);
+                          setCityInputText("");
+                          setIsCityDropdownOpen(false);
+                        }}
+                        className="h-7 px-2.5 text-xs"
+                      >
+                        Cancel
+                      </Button>
                     </div>
                   )}
                 </div>
               )}
+
+              {/* Selected city chips + Add City button */}
+              {selectedCities.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {selectedCities.map((city, idx) => (
+                    <span
+                      key={`${city.name}-${idx}`}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-surface-elevated border border-primary/30 text-foreground text-xs font-medium shadow-xs animate-in fade-in zoom-in-95 duration-150 select-none"
+                    >
+                      <span className="px-1.5 py-0.5 rounded-[4px] bg-primary/15 text-primary text-[10px] font-mono font-bold">
+                        Leg #{idx + 1}
+                      </span>
+                      <span className="font-semibold text-foreground">{city.name}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleRemoveCity(city, e)}
+                        aria-label={`Remove ${city.name}`}
+                        className="p-0.5 rounded hover:bg-destructive/15 hover:text-destructive text-muted-foreground transition-colors cursor-pointer ml-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+
+                  {!isAddingNextCity && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setIsAddingNextCity(true);
+                        setCityInputText("");
+                        setIsCityDropdownOpen(true);
+                        setTimeout(() => inputRef.current?.focus(), 50);
+                      }}
+                      className="h-8 px-3 text-xs gap-1.5 border-dashed border-primary/50 text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add City</span>
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {errors.cities && (
+                <p className="text-xs text-destructive flex items-center gap-1 mt-1" role="alert">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.cities}</span>
+                </p>
+              )}
             </div>
+            )}
+
+            {/* SELECTED PLACES / ACTIVITIES LIST (Attached to Itinerary) */}
+            {selectedPlaces.length > 0 && (
+              <div className="space-y-2 p-3.5 rounded-[10px] bg-surface-subtle border border-primary/25 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>
+                      Selected Places & Activities ({selectedPlaces.length})
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    Attached to itinerary
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  {selectedPlaces.map((place) => (
+                    <span
+                      key={place.id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-surface border border-primary/30 text-foreground text-xs shadow-2xs animate-in fade-in"
+                    >
+                      <Check className="w-3 h-3 text-primary shrink-0" />
+                      <span className="font-medium">{place.name}</span>
+                      <span className="text-[10px] font-mono text-primary font-semibold px-1 rounded bg-primary/10">
+                        {place.cityName}
+                      </span>
+                      {place.cost !== undefined && place.cost > 0 && (
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          ₹{place.cost}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePlace(place.id)}
+                        aria-label={`Remove ${place.name}`}
+                        className="p-0.5 rounded hover:bg-destructive/15 hover:text-destructive text-muted-foreground transition-colors cursor-pointer ml-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Date Range: Start Date & End Date */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -673,7 +971,8 @@ function CreateTripForm() {
               >
                 <span>
                   Save Trip & Build Itinerary (
-                  {selectedCities.length || 1} {selectedCities.length === 1 ? "Leg" : "Legs"})
+                  {selectedCities.length || 1} {selectedCities.length === 1 ? "Leg" : "Legs"}
+                  {selectedPlaces.length > 0 ? ` · ${selectedPlaces.length} Places` : ""})
                 </span>
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
@@ -693,7 +992,7 @@ function CreateTripForm() {
           </form>
         </div>
 
-        {/* RIGHT COLUMN: Activity Suggestions for Selected Multi-City Itinerary */}
+        {/* RIGHT COLUMN: Route Suggestions & Custom Place Entry */}
         <div className="lg:col-span-5 space-y-4">
           <div className="flex flex-col gap-2.5 border-b border-border pb-3">
             <div className="flex items-center justify-between gap-2">
@@ -752,81 +1051,197 @@ function CreateTripForm() {
                   No destinations selected
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
-                  Type and select multiple destinations in the &quot;Places You&apos;re
-                  Visiting&quot; field on the left to reveal curated highlights for your
-                  itinerary.
+                  Search and select destinations in &quot;Places You&apos;re Visiting&quot; on
+                  the left to reveal selectable curated places and add custom sights.
                 </p>
               </CardContent>
             </Card>
-          ) : isActivitiesLoading ? (
-            /* Loading State */
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <div
-                  key={n}
-                  className="h-20 rounded-[10px] bg-surface-subtle border border-border animate-pulse p-3.5 space-y-2"
-                >
-                  <div className="h-3 w-1/3 bg-surface-elevated rounded" />
-                  <div className="h-4 w-3/4 bg-surface-elevated rounded" />
-                </div>
-              ))}
-            </div>
-          ) : displayedActivities.length === 0 ? (
-            <Card className="border-border bg-surface text-center p-6">
-              <p className="text-xs text-muted-foreground">
-                No predefined activity cards available for the selected destinations yet. You can add
-                custom activities in the Itinerary Builder.
-              </p>
-            </Card>
           ) : (
-            /* Curated Suggestions Grid */
-            <MotionStaggerContainer staggerDelay={0.05} className="space-y-3">
-              {displayedActivities.map((act) => (
-                <MotionFadeRise key={act.id}>
-                  <div className="p-3.5 rounded-[10px] bg-surface border border-border hover:border-primary/40 transition-colors flex flex-col justify-between gap-2 shadow-xs group">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 rounded-full bg-surface-subtle border border-border text-[10px] font-mono text-primary uppercase">
-                            {act.category || "Highlight"}
-                          </span>
-                          {act.rating && (
-                            <span className="flex items-center gap-0.5 text-[11px] font-mono text-primary font-bold">
-                              <Star className="w-3 h-3 fill-primary text-primary" />
-                              {act.rating}
-                            </span>
-                          )}
-                        </div>
-                        <h3 className="font-medium text-sm text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-1">
-                          {act.name}
-                        </h3>
-                      </div>
+            <div className="space-y-3.5">
+              {/* Search / Filter & Custom Place Entry Box */}
+              <div className="p-3 rounded-[10px] bg-surface border border-border space-y-2.5">
+                <div className="relative">
+                  <Input
+                    type="text"
+                    value={suggestionFilterText}
+                    onChange={(e) => setSuggestionFilterText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (suggestionFilterText.trim()) {
+                          handleAddCustomPlace(suggestionFilterText.trim());
+                        }
+                      }
+                    }}
+                    placeholder={`Search places in ${selectedCountry || "destinations"}...`}
+                    leftIcon={<Search className="w-3.5 h-3.5 text-muted-foreground" />}
+                    className="text-xs h-9"
+                  />
+                </div>
 
-                      <div className="text-right shrink-0">
-                        <span className="text-xs font-mono font-bold text-foreground block">
-                          {act.cost === 0 ? "Free" : `₹${act.cost}`}
-                        </span>
-                        {act.durationMinutes && (
-                          <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5 justify-end mt-0.5">
-                            <Clock className="w-2.5 h-2.5" />
-                            {Math.floor(act.durationMinutes / 60)}h{" "}
-                            {act.durationMinutes % 60
-                              ? `${act.durationMinutes % 60}m`
-                              : ""}
-                          </span>
-                        )}
-                      </div>
+                {/* Custom place addition row */}
+                <div className="flex items-center gap-2 pt-0.5">
+                  {selectedCities.length > 1 && (
+                    <select
+                      value={customPlaceTargetCity || (activeSuggestionCityId !== "all" ? activeSuggestionCityId : selectedCities[0]?.id)}
+                      onChange={(e) => setCustomPlaceTargetCity(e.target.value)}
+                      className="h-8 px-2 rounded-[6px] bg-surface-subtle border border-border text-[11px] text-foreground focus:outline-none focus:border-primary"
+                    >
+                      {selectedCities.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          Add to {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleAddCustomPlace()}
+                    disabled={!suggestionFilterText.trim() && !customPlaceText.trim()}
+                    className="h-8 text-xs gap-1 flex-1 font-semibold"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-primary" />
+                    <span>
+                      Add &quot;{suggestionFilterText.trim() || customPlaceText.trim() || "Place"}&quot; as Custom Sight
+                    </span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Suggestions List */}
+              {isActivitiesLoading ? (
+                /* Loading State */
+                <div className="space-y-2.5">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <div
+                      key={n}
+                      className="h-20 rounded-[10px] bg-surface-subtle border border-border animate-pulse p-3 space-y-2"
+                    >
+                      <div className="h-3 w-1/3 bg-surface-elevated rounded" />
+                      <div className="h-4 w-3/4 bg-surface-elevated rounded" />
                     </div>
+                  ))}
+                </div>
+              ) : displayedActivities.length === 0 ? (
+                <Card className="border-border bg-surface text-center p-6 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    No suggestions matching &quot;{suggestionFilterText}&quot;.
+                  </p>
+                  {suggestionFilterText.trim() && (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleAddCustomPlace(suggestionFilterText.trim())}
+                      className="text-xs gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add &quot;{suggestionFilterText.trim()}&quot; to {selectedCities[0]?.name}</span>
+                    </Button>
+                  )}
+                </Card>
+              ) : (
+                /* Curated Selectable Suggestions Grid */
+                <MotionStaggerContainer staggerDelay={0.04} className="space-y-2.5">
+                  {displayedActivities.map((act) => {
+                    const cityName = act.cityName || selectedCities[0]?.name || "Destination";
+                    const countryName = act.country || selectedCities[0]?.country || "India";
+                    const isSelected = selectedPlaces.some(
+                      (p) =>
+                        p.name.toLowerCase() === act.name.toLowerCase() &&
+                        p.cityName.toLowerCase() === cityName.toLowerCase()
+                    );
 
-                    {act.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                        {act.description}
-                      </p>
-                    )}
-                  </div>
-                </MotionFadeRise>
-              ))}
-            </MotionStaggerContainer>
+                    return (
+                      <MotionFadeRise key={act.id}>
+                        <div
+                          onClick={() =>
+                            handleTogglePlace(act, cityName, countryName, act.cityId)
+                          }
+                          className={`p-3.5 rounded-[10px] border transition-all cursor-pointer flex flex-col justify-between gap-2 select-none group ${
+                            isSelected
+                              ? "bg-primary/10 border-primary shadow-xs ring-1 ring-primary/30"
+                              : "bg-surface border-border hover:border-primary/40 hover:bg-surface-hover"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="px-2 py-0.5 rounded-full bg-surface-subtle border border-border text-[10px] font-mono text-primary uppercase">
+                                  {act.category || "Highlight"}
+                                </span>
+                                {selectedCities.length > 1 && (
+                                  <span className="text-[10px] font-mono text-muted-foreground font-semibold">
+                                    📍 {cityName}
+                                  </span>
+                                )}
+                                {act.rating && (
+                                  <span className="flex items-center gap-0.5 text-[11px] font-mono text-primary font-bold">
+                                    <Star className="w-3 h-3 fill-primary text-primary" />
+                                    {act.rating}
+                                  </span>
+                                )}
+                              </div>
+                              <h3
+                                className={`font-semibold text-sm leading-snug line-clamp-1 transition-colors ${
+                                  isSelected
+                                    ? "text-primary"
+                                    : "text-foreground group-hover:text-primary"
+                                }`}
+                              >
+                                {act.name}
+                              </h3>
+                            </div>
+
+                            <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                              <span className="text-xs font-mono font-bold text-foreground block">
+                                {act.cost === 0 ? "Free" : `₹${act.cost}`}
+                              </span>
+                              {act.durationMinutes && (
+                                <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5 justify-end">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  {Math.floor(act.durationMinutes / 60)}h{" "}
+                                  {act.durationMinutes % 60
+                                    ? `${act.durationMinutes % 60}m`
+                                    : ""}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {act.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                              {act.description}
+                            </p>
+                          )}
+
+                          {/* Selection indicator bar */}
+                          <div className="flex items-center justify-between pt-1.5 border-t border-border/40 text-[11px]">
+                            {isSelected ? (
+                              <span className="font-semibold text-primary flex items-center gap-1">
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Selected for {cityName}</span>
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1">
+                                <Plus className="w-3.5 h-3.5 text-primary" />
+                                <span>Click to add to {cityName}</span>
+                              </span>
+                            )}
+                            <span className="text-[10px] font-mono text-muted-foreground">
+                              {isSelected ? "Click to remove" : "+ Add Place"}
+                            </span>
+                          </div>
+                        </div>
+                      </MotionFadeRise>
+                    );
+                  })}
+                </MotionStaggerContainer>
+              )}
+            </div>
           )}
         </div>
       </div>

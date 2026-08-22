@@ -92,6 +92,20 @@ export interface CreateTripInput {
     country: string;
     sectionBudget?: number;
     notes?: string;
+    places?: Array<{
+      activityId?: string;
+      activityName: string;
+      cityId?: string;
+      cityName?: string;
+      costOverride?: number;
+    }>;
+  }>;
+  places?: Array<{
+    activityId?: string;
+    activityName: string;
+    cityId?: string;
+    cityName?: string;
+    costOverride?: number;
   }>;
   cityId?: string;
   cityName?: string;
@@ -110,6 +124,14 @@ export interface AddStopInput {
   endDate?: string;
   sectionBudget?: number;
   notes?: string;
+  itineraryItems?: Array<{
+    id?: string;
+    activityId?: string;
+    activityName: string;
+    dayNumber?: number;
+    orderIndex?: number;
+    costOverride?: number;
+  }>;
 }
 
 export interface UpdateStopInput {
@@ -120,6 +142,14 @@ export interface UpdateStopInput {
   endDate?: string;
   sectionBudget?: number;
   notes?: string;
+  itineraryItems?: Array<{
+    id?: string;
+    activityId?: string;
+    activityName: string;
+    dayNumber?: number;
+    orderIndex?: number;
+    costOverride?: number;
+  }>;
 }
 
 export interface AuthResponse {
@@ -307,9 +337,17 @@ export const authApi = {
 };
 
 export const citiesApi = {
-  getTop: (limit = 5) => apiFetch<City[]>(`/cities/top?limit=${limit}`),
-  search: (query: string, limit = 10) =>
-    apiFetch<City[]>(`/cities/search?q=${encodeURIComponent(query)}&limit=${limit}`),
+  getCountries: () => apiFetch<string[]>("/cities/countries"),
+  getTop: (limit = 5, country?: string) =>
+    apiFetch<City[]>(
+      `/cities/top?limit=${limit}${country ? `&country=${encodeURIComponent(country)}` : ""}`
+    ),
+  search: (query: string, limit = 10, country?: string) =>
+    apiFetch<City[]>(
+      `/cities/search?q=${encodeURIComponent(query)}&limit=${limit}${
+        country ? `&country=${encodeURIComponent(country)}` : ""
+      }`
+    ),
   getById: (id: string) => apiFetch<City>(`/cities/${id}`),
   getActivities: (cityId: string, top = 6) =>
     apiFetch<Activity[]>(`/cities/${cityId}/activities?top=${top}`),

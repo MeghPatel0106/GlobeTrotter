@@ -5,8 +5,32 @@ import {
   IsDateString,
   IsNumber,
   IsArray,
+  ValidateNested,
   Min,
 } from "class-validator";
+import { Type } from "class-transformer";
+
+export class StopItineraryItemDto {
+  @IsString()
+  @IsOptional()
+  activityId?: string;
+
+  @IsString()
+  @IsNotEmpty({ message: "Activity/place name is required." })
+  activityName: string;
+
+  @IsNumber()
+  @IsOptional()
+  dayNumber?: number;
+
+  @IsNumber()
+  @IsOptional()
+  orderIndex?: number;
+
+  @IsNumber()
+  @IsOptional()
+  costOverride?: number;
+}
 
 export class AddStopDto {
   @IsString()
@@ -37,6 +61,12 @@ export class AddStopDto {
   @IsString()
   @IsNotEmpty({ message: "Section notes and itinerary goals are required." })
   notes: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => StopItineraryItemDto)
+  @IsOptional()
+  itineraryItems?: StopItineraryItemDto[];
 }
 
 export class UpdateStopDto {
@@ -68,6 +98,12 @@ export class UpdateStopDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => StopItineraryItemDto)
+  @IsOptional()
+  itineraryItems?: StopItineraryItemDto[];
 }
 
 export class ReorderStopsDto {

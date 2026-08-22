@@ -10,6 +10,36 @@ import {
 } from "class-validator";
 import { Type } from "class-transformer";
 
+export class TripItineraryItemDto {
+  @IsString()
+  @IsOptional()
+  activityId?: string;
+
+  @IsString()
+  @IsNotEmpty({ message: "Place or activity name is required." })
+  activityName: string;
+
+  @IsString()
+  @IsOptional()
+  cityId?: string;
+
+  @IsString()
+  @IsOptional()
+  cityName?: string;
+
+  @IsNumber()
+  @IsOptional()
+  dayNumber?: number;
+
+  @IsNumber()
+  @IsOptional()
+  orderIndex?: number;
+
+  @IsNumber()
+  @IsOptional()
+  costOverride?: number;
+}
+
 export class TripCityItemDto {
   @IsString()
   @IsOptional()
@@ -31,6 +61,12 @@ export class TripCityItemDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TripItineraryItemDto)
+  @IsOptional()
+  places?: TripItineraryItemDto[];
 }
 
 export class CreateTripDto {
@@ -51,6 +87,12 @@ export class CreateTripDto {
   @Type(() => TripCityItemDto)
   @IsOptional()
   cities?: TripCityItemDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TripItineraryItemDto)
+  @IsOptional()
+  places?: TripItineraryItemDto[];
 
   @IsString()
   @IsOptional()

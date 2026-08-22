@@ -79,6 +79,16 @@ export class TripsService {
       throw new BadRequestException("At least one destination city is required.");
     }
 
+    // Enforce country constraint across all destination legs
+    const targetCountry = cityList[0].country.trim().toLowerCase();
+    for (let i = 1; i < cityList.length; i++) {
+      if (cityList[i].country.trim().toLowerCase() !== targetCountry) {
+        throw new BadRequestException(
+          `This trip is currently set to ${cityList[0].country}. Choose another ${cityList[0].country} destination.`
+        );
+      }
+    }
+
     // Try finding cover photo from the first city
     const firstCityId = cityList[0].cityId;
     if (firstCityId && Types.ObjectId.isValid(firstCityId) && !coverPhoto) {
@@ -111,6 +121,30 @@ export class TripsService {
       const stopStart = new Date(startDate.getTime() + startDayOffset * 86400000);
       const stopEnd = new Date(startDate.getTime() + Math.max(startDayOffset, endDayOffset) * 86400000);
 
+      // Collect places/activities belonging to this stop
+      const stopPlaces = (c.places || []).concat(
+        (dto.places || []).filter(
+          (p) =>
+            (p.cityId && c.cityId && p.cityId === c.cityId) ||
+            (p.cityName && p.cityName.toLowerCase() === c.cityName.toLowerCase())
+        )
+      );
+
+      const itineraryItems = stopPlaces.map((p, pIdx) => {
+        let actObjectId: Types.ObjectId | undefined = undefined;
+        if (p.activityId && Types.ObjectId.isValid(p.activityId)) {
+          actObjectId = new Types.ObjectId(p.activityId);
+        }
+
+        return {
+          activityId: actObjectId,
+          activityName: p.activityName.trim(),
+          dayNumber: p.dayNumber || 1,
+          orderIndex: p.orderIndex !== undefined ? p.orderIndex : pIdx,
+          costOverride: p.costOverride !== undefined ? p.costOverride : null,
+        };
+      });
+
       return {
         cityId: cityObjectId,
         cityName: c.cityName.trim(),
@@ -120,7 +154,7 @@ export class TripsService {
         endDate: stopEnd,
         sectionBudget: c.sectionBudget || perStopBudget,
         notes: c.notes || dto.notes || `Destination leg for ${c.cityName}.`,
-        itineraryItems: [],
+        itineraryItems,
       };
     });
 
@@ -161,6 +195,17 @@ export class TripsService {
       throw new ForbiddenException("You do not have permission to modify this trip.");
     }
 
+    // Enforce country consistency with first stop if present
+    if (trip.stops && trip.stops.length > 0) {
+      const tripCountry = trip.stops[0].country.trim().toLowerCase();
+      const stopCountry = dto.country.trim().toLowerCase();
+      if (stopCountry !== tripCountry) {
+        throw new BadRequestException(
+          `This trip is currently set to ${trip.stops[0].country}. Choose another ${trip.stops[0].country} destination.`
+        );
+      }
+    }
+
     let cityObjectId: Types.ObjectId | undefined = undefined;
     if (dto.cityId && Types.ObjectId.isValid(dto.cityId)) {
       cityObjectId = new Types.ObjectId(dto.cityId);
@@ -171,6 +216,23 @@ export class TripsService {
 
     if (startDate && endDate && endDate < startDate) {
       throw new BadRequestException("Section end date cannot be earlier than start date.");
+    }
+
+    let itineraryItems: any[] = [];
+    if (dto.itineraryItems && Array.isArray(dto.itineraryItems)) {
+      itineraryItems = dto.itineraryItems.map((item, idx) => {
+        let actObjectId: Types.ObjectId | undefined = undefined;
+        if (item.activityId && Types.ObjectId.isValid(item.activityId)) {
+          actObjectId = new Types.ObjectId(item.activityId);
+        }
+        return {
+          activityId: actObjectId,
+          activityName: item.activityName.trim(),
+          dayNumber: item.dayNumber || 1,
+          orderIndex: item.orderIndex !== undefined ? item.orderIndex : idx,
+          costOverride: item.costOverride !== undefined ? item.costOverride : null,
+        };
+      });
     }
 
     const nextOrder = trip.stops?.length || 0;
@@ -184,7 +246,7 @@ export class TripsService {
       endDate: endDate || trip.endDate,
       sectionBudget: dto.sectionBudget ?? null,
       notes: dto.notes || null,
-      itineraryItems: [],
+      itineraryItems,
     };
 
     trip.stops.push(newStop as any);
@@ -227,7 +289,7 @@ export class TripsService {
         (s: any) => s._id?.toString() === stopId || s.id === stopId
       );
     if (!stop) {
-      throw new NotFoundException(`Stop with ID ${stopId} not found in this trip.`);
+      throw new NotFoundException(`Stop with ID ${stopId} not found.`);
     }
 
     if (dto.cityName) stop.cityName = dto.cityName.trim();
@@ -239,6 +301,23 @@ export class TripsService {
     if (dto.endDate) stop.endDate = new Date(dto.endDate);
     if (dto.sectionBudget !== undefined) stop.sectionBudget = dto.sectionBudget;
     if (dto.notes !== undefined) stop.notes = dto.notes;
+
+    if (dto.itineraryItems !== undefined) {
+      stop.itineraryItems = dto.itineraryItems.map((item, idx) => {
+        let actObjectId: Types.ObjectId | undefined = undefined;
+        if (item.activityId && Types.ObjectId.isValid(item.activityId)) {
+          actObjectId = new Types.ObjectId(item.activityId);
+        }
+        return {
+          activityId: actObjectId,
+          activityName: item.activityName.trim(),
+          dayNumber: item.dayNumber || 1,
+          orderIndex: item.orderIndex !== undefined ? item.orderIndex : idx,
+          costOverride: item.costOverride !== undefined ? item.costOverride : null,
+        };
+      }) as any;
+      trip.markModified("stops");
+    }
 
     if (stop.startDate && stop.endDate && stop.endDate < stop.startDate) {
       throw new BadRequestException("Section end date cannot be earlier than start date.");

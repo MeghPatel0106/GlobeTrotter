@@ -11,17 +11,34 @@ export class CitiesService {
     @InjectModel(Activity.name) private activityModel: Model<ActivityDocument>
   ) {}
 
-  async getTopCities(limit = 24): Promise<City[]> {
+  async getDistinctCountries(): Promise<string[]> {
+    const countries = await this.cityModel.distinct("country").exec();
+    return (countries as string[]).sort();
+  }
+
+  async getTopCities(limit = 24, country?: string): Promise<City[]> {
+    const filter = country?.trim()
+      ? { country: new RegExp(`^${country.trim()}$`, "i") }
+      : {};
+
     return this.cityModel
-      .find()
+      .find(filter)
       .sort({ popularityScore: -1 })
       .limit(limit)
       .exec();
   }
 
-  async searchCities(query: string, limit = 20): Promise<City[]> {
+  async searchCities(query: string, limit = 20, country?: string): Promise<City[]> {
+    const countryFilter = country?.trim()
+      ? { country: new RegExp(`^${country.trim()}$`, "i") }
+      : {};
+
     if (!query || query.trim().length === 0) {
-      return this.cityModel.find().sort({ popularityScore: -1 }).limit(limit).exec();
+      return this.cityModel
+        .find(countryFilter)
+        .sort({ popularityScore: -1 })
+        .limit(limit)
+        .exec();
     }
 
     const cleanQuery = query.trim();
@@ -50,6 +67,7 @@ export class CitiesService {
 
     return this.cityModel
       .find({
+        ...countryFilter,
         $or: [
           { name: regex },
           { country: regex },

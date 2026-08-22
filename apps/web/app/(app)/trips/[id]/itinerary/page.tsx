@@ -28,6 +28,7 @@ import {
   Loader2,
   ChevronUp,
   ChevronDown,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Card,
@@ -43,6 +44,13 @@ import {
 } from "@globetrotter/ui";
 import { tripsApi, stopsApi, citiesApi, Trip, Stop, City, AddStopInput, UpdateStopInput } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+
+interface FormPlaceItem {
+  id?: string;
+  activityId?: string;
+  activityName: string;
+  costOverride?: number;
+}
 
 // Sub-component for an individual reorderable section item
 function SectionReorderItem({
@@ -72,11 +80,11 @@ function SectionReorderItem({
         day: "numeric",
       })
     : null;
+
   const stopEnd = stop.endDate
     ? new Date(stop.endDate).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
-        year: "numeric",
       })
     : null;
 
@@ -136,69 +144,99 @@ function SectionReorderItem({
           </div>
 
           {/* Section Content */}
-          <div className="flex-1 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 min-w-0">
-            <div className="space-y-1.5 flex-1 min-w-0">
-              {/* Order index + City / Country */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2.5 py-0.5 rounded-[6px] bg-primary/10 border border-primary/20 text-primary text-[11px] font-mono font-semibold shrink-0">
-                  Leg #{idx + 1}
-                </span>
-                <h3 className="text-base sm:text-lg font-bold text-foreground truncate">
-                  {stop.cityName}
-                  {stop.country && (
-                    <span className="text-muted-foreground font-normal text-sm ml-1.5">
-                      · {stop.country}
+          <div className="flex-1 p-4 sm:p-5 flex flex-col justify-between gap-3 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 min-w-0">
+              <div className="space-y-1.5 flex-1 min-w-0">
+                {/* Order index + City / Country */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-[6px] bg-primary/10 border border-primary/20 text-primary text-[11px] font-mono font-semibold shrink-0">
+                    Leg #{idx + 1}
+                  </span>
+                  <h3 className="text-base sm:text-lg font-bold text-foreground truncate">
+                    {stop.cityName}
+                    {stop.country && (
+                      <span className="text-muted-foreground font-normal text-sm ml-1.5">
+                        · {stop.country}
+                      </span>
+                    )}
+                  </h3>
+                </div>
+
+                {/* Notes / Description */}
+                <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                  {stop.notes ||
+                    `Destination leg for ${stop.cityName}. Activities, accommodation, and day plans.`}
+                </p>
+
+                {/* Date Range & Budget Meta */}
+                <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-muted-foreground pt-1">
+                  {stopStart && stopEnd && (
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span>
+                        {stopStart} – {stopEnd}
+                      </span>
                     </span>
                   )}
-                </h3>
-              </div>
 
-              {/* Notes / Description */}
-              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                {stop.notes ||
-                  `Destination leg for ${stop.cityName}. Activities, accommodation, and day plans.`}
-              </p>
-
-              {/* Date Range & Budget Meta */}
-              <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-muted-foreground pt-1">
-                {stopStart && stopEnd && (
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span>
-                      {stopStart} – {stopEnd}
+                  {stop.sectionBudget != null && (
+                    <span className="flex items-center gap-0.5 text-success font-medium">
+                      <span className="font-bold">₹</span>
+                      <span>{stop.sectionBudget.toLocaleString()}</span>
                     </span>
-                  </span>
-                )}
+                  )}
+                </div>
+              </div>
 
-                {stop.sectionBudget != null && (
-                  <span className="flex items-center gap-0.5 text-success font-medium">
-                    <span className="font-bold">₹</span>
-                    <span>{stop.sectionBudget.toLocaleString()}</span>
-                  </span>
-                )}
+              {/* Edit & Delete Action Buttons */}
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-start">
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  aria-label={`Edit ${stop.cityName} section`}
+                  className="p-2 min-h-[38px] min-w-[38px] rounded-[8px] border border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-hover hover:border-primary/40 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onDeleteRequest}
+                  aria-label={`Delete ${stop.cityName} section`}
+                  className="p-2 min-h-[38px] min-w-[38px] rounded-[8px] border border-border bg-surface text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
 
-            {/* Edit & Delete Action Buttons */}
-            <div className="flex items-center gap-2 self-end sm:self-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/60 w-full sm:w-auto justify-end">
-              <button
-                type="button"
-                onClick={onEdit}
-                aria-label={`Edit ${stop.cityName} section`}
-                className="p-2 min-h-[38px] min-w-[38px] rounded-[8px] border border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-hover hover:border-primary/40 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={onDeleteRequest}
-                aria-label={`Delete ${stop.cityName} section`}
-                className="p-2 min-h-[38px] min-w-[38px] rounded-[8px] border border-border bg-surface text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            {/* Selected Places & Activities List */}
+            {stop.itineraryItems && stop.itineraryItems.length > 0 && (
+              <div className="pt-2.5 border-t border-border/50 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono font-semibold text-primary flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3" />
+                    <span>Places & Activities ({stop.itineraryItems.length}):</span>
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {stop.itineraryItems.map((item, itemIdx) => (
+                    <span
+                      key={item.id || (item as any)._id || itemIdx}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] bg-surface-subtle border border-border text-xs text-foreground font-medium"
+                    >
+                      <Check className="w-3 h-3 text-primary shrink-0" />
+                      <span>{item.activityName || "Attraction"}</span>
+                      {item.costOverride !== undefined && item.costOverride !== null && (
+                        <span className="text-[10px] font-mono text-muted-foreground ml-0.5">
+                          {item.costOverride === 0 ? "Free" : `₹${item.costOverride}`}
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Card>
@@ -231,6 +269,10 @@ export default function TripItineraryPage() {
   const [sectionBudget, setSectionBudget] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [formError, setFormError] = React.useState("");
+
+  // Places / activities inside the form (both Add & Edit)
+  const [formPlaces, setFormPlaces] = React.useState<FormPlaceItem[]>([]);
+  const [newPlaceInput, setNewPlaceInput] = React.useState("");
 
   // Delete Confirmation Dialog state
   const [deletingStop, setDeletingStop] = React.useState<{
@@ -273,10 +315,12 @@ export default function TripItineraryPage() {
     }
   }, [trip?.stops]);
 
-  // Live search for destination cities
+  const tripCountry = trip?.stops && trip.stops.length > 0 ? trip.stops[0].country : null;
+
+  // Live search for destination cities (strictly filtered by tripCountry)
   const { data: searchResults = [] } = useQuery({
-    queryKey: ["cities", "search", citySearch],
-    queryFn: () => citiesApi.search(citySearch, 8),
+    queryKey: ["cities", "search", citySearch, tripCountry],
+    queryFn: () => citiesApi.search(citySearch, 8, tripCountry || undefined),
     enabled: isCityDropdownOpen && citySearch.trim().length > 0,
     staleTime: 30 * 1000,
   });
@@ -284,7 +328,7 @@ export default function TripItineraryPage() {
   // Top activities for selected city
   const { data: cityActivities = [] } = useQuery({
     queryKey: ["cities", selectedCity?.id, "activities"],
-    queryFn: () => (selectedCity?.id ? citiesApi.getActivities(selectedCity.id, 4) : []),
+    queryFn: () => (selectedCity?.id ? citiesApi.getActivities(selectedCity.id, 6) : []),
     enabled: !!selectedCity?.id,
     staleTime: 5 * 60 * 1000,
   });
@@ -292,11 +336,11 @@ export default function TripItineraryPage() {
   // Add Stop Mutation
   const addStopMutation = useMutation({
     mutationFn: (data: AddStopInput) => tripsApi.addStop(tripId, data),
-    onSuccess: (updatedTrip) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       const addedLegName = selectedCity?.name || citySearch.split(",")[0].trim();
-      toast.success(`Added ${addedLegName} section to itinerary`);
+      toast.success(`Added ${addedLegName} section with ${formPlaces.length} places`);
       resetForm();
     },
     onError: (err: any) => {
@@ -351,20 +395,23 @@ export default function TripItineraryPage() {
     },
   });
 
-  // Handle Drag Reorder Commit
+  // Reorder Handler
   const handleReorder = (newOrder: Stop[]) => {
-    setOrderedStops(newOrder);
-    const stopIds = newOrder
+    const updated = newOrder.map((s, idx) => ({ ...s, orderIndex: idx }));
+    setOrderedStops(updated);
+
+    const stopIds = updated
       .map((s) => s.id || s._id)
-      .filter((id): id is string => !!id);
+      .filter((id): id is string => Boolean(id));
+
     if (stopIds.length > 0) {
       reorderStopsMutation.mutate(stopIds);
     }
   };
 
-  // Move a stop up by one position
+  // Keyboard / Arrow 1-Click Move Handlers
   const handleMoveUp = (index: number) => {
-    if (index <= 0) return;
+    if (index === 0) return;
     const newOrder = [...orderedStops];
     const temp = newOrder[index];
     newOrder[index] = newOrder[index - 1];
@@ -372,9 +419,8 @@ export default function TripItineraryPage() {
     handleReorder(newOrder);
   };
 
-  // Move a stop down by one position
   const handleMoveDown = (index: number) => {
-    if (index >= orderedStops.length - 1) return;
+    if (index === orderedStops.length - 1) return;
     const newOrder = [...orderedStops];
     const temp = newOrder[index];
     newOrder[index] = newOrder[index + 1];
@@ -394,6 +440,8 @@ export default function TripItineraryPage() {
     setSectionBudget("");
     setNotes("");
     setFormError("");
+    setFormPlaces([]);
+    setNewPlaceInput("");
   };
 
   // Open Edit Form
@@ -411,6 +459,16 @@ export default function TripItineraryPage() {
     setSectionBudget(stop.sectionBudget != null ? stop.sectionBudget.toString() : "");
     setNotes(stop.notes || "");
     setFormError("");
+
+    // Populate places
+    const existingPlaces: FormPlaceItem[] = (stop.itineraryItems || []).map((item) => ({
+      id: item.id || (item as any)._id,
+      activityId: item.activityId ? item.activityId.toString() : undefined,
+      activityName: item.activityName || "Place",
+      costOverride: item.costOverride ?? undefined,
+    }));
+    setFormPlaces(existingPlaces);
+    setNewPlaceInput("");
 
     setTimeout(() => {
       editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -438,6 +496,36 @@ export default function TripItineraryPage() {
     setTimeout(() => {
       addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 50);
+  };
+
+  // Add Place to Form
+  const handleAddPlaceToForm = (placeName?: string, cost?: number, actId?: string) => {
+    const nameToAdd = (placeName || newPlaceInput).trim();
+    if (!nameToAdd) return;
+
+    const isDuplicate = formPlaces.some(
+      (p) => p.activityName.toLowerCase() === nameToAdd.toLowerCase()
+    );
+    if (isDuplicate) {
+      toast.error(`"${nameToAdd}" is already added to this section.`);
+      return;
+    }
+
+    setFormPlaces((prev) => [
+      ...prev,
+      {
+        id: `form-place-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        activityId: actId,
+        activityName: nameToAdd,
+        costOverride: cost,
+      },
+    ]);
+    setNewPlaceInput("");
+  };
+
+  // Remove Place from Form
+  const handleRemoveFormPlace = (index: number) => {
+    setFormPlaces((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Handle Form Submit
@@ -490,7 +578,14 @@ export default function TripItineraryPage() {
     const cityName = selectedCity?.name || citySearch.split(",")[0].trim();
     const country =
       selectedCity?.country ||
-      (citySearch.includes(",") ? citySearch.split(",")[1].trim() : "India");
+      (citySearch.includes(",") ? citySearch.split(",")[1].trim() : (tripCountry || "India"));
+
+    if (tripCountry && country.toLowerCase() !== tripCountry.toLowerCase()) {
+      const err = `This trip is currently set to ${tripCountry}. Choose another ${tripCountry} destination.`;
+      setFormError(err);
+      toast.error(err);
+      return;
+    }
 
     const payload: AddStopInput = {
       cityId: selectedCity?.id,
@@ -500,6 +595,12 @@ export default function TripItineraryPage() {
       endDate: new Date(endDate).toISOString(),
       sectionBudget: parseFloat(sectionBudget),
       notes: notes.trim(),
+      itineraryItems: formPlaces.map((p, idx) => ({
+        activityId: p.activityId,
+        activityName: p.activityName.trim(),
+        orderIndex: idx,
+        costOverride: p.costOverride,
+      })),
     };
 
     if (editingStopId) {
@@ -602,81 +703,60 @@ export default function TripItineraryPage() {
         aria-label="Breadcrumb"
         className="flex items-center gap-2 text-xs font-mono text-muted-foreground"
       >
-        <Link
-          href="/dashboard"
-          className="hover:text-foreground transition-colors"
-        >
+        <Link href="/dashboard" className="hover:text-foreground transition-colors">
           Dashboard
         </Link>
-        <ChevronRight className="w-3 h-3 text-muted-foreground/60" />
-        <Link
-          href="/trips/mine"
-          className="hover:text-foreground transition-colors"
-        >
+        <ChevronRight className="w-3.5 h-3.5" />
+        <Link href="/trips/mine" className="hover:text-foreground transition-colors">
           Expeditions
         </Link>
-        <ChevronRight className="w-3 h-3 text-muted-foreground/60" />
-        <span className="text-primary font-semibold truncate max-w-[200px] sm:max-w-xs">
+        <ChevronRight className="w-3.5 h-3.5" />
+        <span className="text-primary font-semibold truncate max-w-[200px]">
           {trip.name}
         </span>
       </nav>
 
-      {/* Trip Header & Summary Card */}
-      <div className="relative overflow-hidden rounded-[16px] bg-surface border border-border p-6 sm:p-7 shadow-xs">
-        <div className="space-y-4">
-          {/* Status Badge & Subtitle */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-primary">
-              <Route className="w-3.5 h-3.5" />
-              <span>Itinerary Builder · Route Sequence</span>
-            </div>
-            <span
-              className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-semibold shrink-0 ${
-                trip.status === "DRAFT"
-                  ? "bg-surface-subtle border border-border text-muted-foreground"
-                  : trip.status === "ONGOING"
-                  ? "bg-success/15 border border-success/30 text-success"
-                  : "bg-primary/15 border border-primary/30 text-primary"
-              }`}
-            >
-              {trip.status}
-            </span>
+      {/* Trip Header Card with Summary */}
+      <div className="p-6 rounded-[16px] bg-surface border border-border shadow-xs space-y-4 relative overflow-hidden">
+        <div className="space-y-2 relative z-10">
+          <div className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-primary">
+            <Route className="w-3.5 h-3.5" />
+            <span>Itinerary Builder · Phase 3</span>
           </div>
 
-          {/* Trip Title */}
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             {trip.name}
           </h1>
 
-          {/* Trip Summary / Notes */}
-          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-xl">
             {trip.description ||
-              `Custom multi-city travel itinerary with ${orderedStops.length} destination leg${
-                orderedStops.length === 1 ? "" : "s"
-              }. Organize your route schedule, activities, and budget allocations.`}
+              "Assemble, structure, and schedule your day-by-day expedition route legs and destination highlights."}
           </p>
 
-          {/* Quick Metrics Bar */}
-          <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-muted-foreground pt-3 border-t border-border">
+          <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-muted-foreground pt-1">
             {tripStartFormatted && tripEndFormatted && (
-              <span className="flex items-center gap-1.5 text-foreground">
-                <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-primary" />
                 <span>
                   {tripStartFormatted} – {tripEndFormatted}
                 </span>
-              </span>
+              </div>
             )}
 
             {trip.totalBudgetEstimate != null && (
-              <span className="flex items-center gap-1 text-success font-medium">
-                <span className="font-bold">₹</span>
-                <span>{trip.totalBudgetEstimate.toLocaleString()} Budget</span>
-              </span>
+              <div className="flex items-center gap-1">
+                <span className="text-foreground font-bold">₹</span>
+                <span className="text-foreground font-bold">
+                  {trip.totalBudgetEstimate.toLocaleString()}
+                </span>
+                <span className="text-muted-foreground">total est.</span>
+              </div>
             )}
 
-            <span className="text-muted-foreground font-mono">
-              {orderedStops.length} {orderedStops.length === 1 ? "Leg Logged" : "Legs Logged"}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-primary" />
+              <span className="capitalize">{trip.status || "Draft"}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -815,6 +895,119 @@ export default function TripItineraryPage() {
                               className="text-xs sm:text-sm"
                             />
                           </div>
+
+                          {/* Places & Sights Manager in Edit Form */}
+                          <div className="space-y-2.5 pt-2 border-t border-border/60">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                                <span>Places & Activities in this Leg ({formPlaces.length})</span>
+                              </Label>
+                              <span className="text-[10px] font-mono text-muted-foreground">
+                                Add or remove sights
+                              </span>
+                            </div>
+
+                            {/* Current Places in this Leg */}
+                            {formPlaces.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-[8px] bg-surface-subtle border border-border/60">
+                                {formPlaces.map((p, pIdx) => (
+                                  <span
+                                    key={p.id || pIdx}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-surface border border-primary/30 text-xs text-foreground font-medium shadow-2xs"
+                                  >
+                                    <Check className="w-3 h-3 text-primary shrink-0" />
+                                    <span>{p.activityName}</span>
+                                    {p.costOverride !== undefined && p.costOverride !== null && (
+                                      <span className="text-[10px] font-mono text-muted-foreground">
+                                        {p.costOverride === 0 ? "Free" : `₹${p.costOverride}`}
+                                      </span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveFormPlace(pIdx)}
+                                      aria-label={`Remove ${p.activityName}`}
+                                      className="p-0.5 rounded hover:bg-destructive/15 hover:text-destructive text-muted-foreground transition-colors cursor-pointer ml-0.5"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Add new place input row */}
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={newPlaceInput}
+                                onChange={(e) => setNewPlaceInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleAddPlaceToForm();
+                                  }
+                                }}
+                                placeholder="Add sight or attraction (e.g. Mehtab Bagh, Marine Drive)..."
+                                className="flex-1 h-9 px-3 rounded-[8px] bg-input-bg border border-input-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                              />
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleAddPlaceToForm()}
+                                disabled={!newPlaceInput.trim()}
+                                className="h-9 px-3 text-xs gap-1 shrink-0 font-semibold"
+                              >
+                                <Plus className="w-3.5 h-3.5 text-primary" />
+                                <span>Add Place</span>
+                              </Button>
+                            </div>
+
+                            {/* City Suggestions for quick 1-click addition */}
+                            {cityActivities.length > 0 && (
+                              <div className="space-y-1 pt-1">
+                                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider block">
+                                  Suggested for {stop.cityName}:
+                                </span>
+                                <div className="flex flex-wrap items-center gap-1">
+                                  {cityActivities.map((act) => {
+                                    const isAdded = formPlaces.some(
+                                      (p) =>
+                                        p.activityName.toLowerCase() ===
+                                        act.name.toLowerCase()
+                                    );
+                                    return (
+                                      <button
+                                        key={act.id}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isAdded) {
+                                            setFormPlaces((prev) =>
+                                              prev.filter(
+                                                (p) =>
+                                                  p.activityName.toLowerCase() !==
+                                                  act.name.toLowerCase()
+                                              )
+                                            );
+                                          } else {
+                                            handleAddPlaceToForm(act.name, act.cost, act.id);
+                                          }
+                                        }}
+                                        className={`px-2 py-0.5 rounded-[4px] text-[11px] font-mono transition-colors cursor-pointer border ${
+                                          isAdded
+                                            ? "bg-primary/15 border-primary/40 text-primary font-semibold"
+                                            : "bg-surface-subtle border-border/70 text-muted-foreground hover:text-foreground hover:border-primary/40"
+                                        }`}
+                                      >
+                                        {isAdded ? `✓ ${act.name}` : `+ ${act.name}`}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         {formError && (
@@ -862,7 +1055,9 @@ export default function TripItineraryPage() {
                   idx={idx}
                   totalStops={orderedStops.length}
                   onEdit={() => handleStartEdit(stop, stopId)}
-                  onDeleteRequest={() => setDeletingStop({ id: stopId, name: stop.cityName })}
+                  onDeleteRequest={() =>
+                    setDeletingStop({ id: stopId, name: stop.cityName })
+                  }
                   onMoveUp={() => handleMoveUp(idx)}
                   onMoveDown={() => handleMoveDown(idx)}
                   shouldReduceMotion={shouldReduceMotion}
@@ -872,293 +1067,362 @@ export default function TripItineraryPage() {
           </Reorder.Group>
         )}
 
-        {/* Expandable Add Section Form */}
-        <AnimatePresence>
-          {isAddFormOpen && (
-            <motion.div
-              ref={addFormRef}
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="scroll-mt-24"
-            >
-              <Card className="border-2 border-primary/70 bg-surface shadow-lg p-5 sm:p-6 rounded-[14px]">
-                <form onSubmit={handleSubmitSection} className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs">
-                        <Plus className="w-3.5 h-3.5" />
-                      </div>
-                      <h3 className="text-base font-bold text-foreground">
-                        Add Destination Leg (Stop #{orderedStops.length + 1})
-                      </h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      aria-label="Close add form"
-                      className="p-1 rounded text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Destination City Input with built-in LeftIcon */}
-                  <div className="relative">
-                    <Input
-                      label="Destination City"
-                      required
-                      value={citySearch}
-                      onChange={(e) => {
-                        setCitySearch(e.target.value);
-                        setIsCityDropdownOpen(true);
-                      }}
-                      onFocus={() => setIsCityDropdownOpen(true)}
-                      placeholder="Search city, state, or country (e.g. Udaipur, Tokyo, Paris)..."
-                      leftIcon={<Search className="w-4 h-4 text-muted-foreground" />}
-                    />
-
-                    {/* Autocomplete Dropdown */}
-                    {isCityDropdownOpen && searchResults.length > 0 && (
-                      <div className="absolute left-0 right-0 top-full mt-1.5 bg-surface border border-border rounded-[10px] shadow-xl z-50 max-h-52 overflow-y-auto">
-                        {searchResults.map((c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCity({ id: c.id, name: c.name, country: c.country });
-                              setCitySearch(`${c.name}, ${c.country}`);
-                              setIsCityDropdownOpen(false);
-                            }}
-                            className="w-full px-3.5 py-2.5 text-left hover:bg-surface-hover flex items-center justify-between text-xs transition-colors border-b border-border/40 last:border-0 cursor-pointer"
-                          >
-                            <span className="font-semibold text-foreground">
-                              {c.name},{" "}
-                              <span className="font-normal text-muted-foreground">
-                                {c.country}
-                              </span>
-                            </span>
-                            <span className="text-[10px] font-mono text-primary font-semibold">
-                              {c.country === "India" ? "India" : "Global"}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Quick Activity Tags when city is selected */}
-                  {selectedCity && cityActivities.length > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      <span className="text-[11px] font-mono text-muted-foreground flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 text-primary" />
-                        Suggested highlights for {selectedCity.name}:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {cityActivities.map((act) => (
-                          <button
-                            key={act.name}
-                            type="button"
-                            onClick={() => {
-                              setNotes((prev) =>
-                                prev ? `${prev} · ${act.name}` : act.name
-                              );
-                            }}
-                            className="px-2.5 py-1 rounded-full text-[10px] bg-surface-subtle hover:bg-primary/10 hover:text-primary border border-border transition-colors cursor-pointer"
-                          >
-                            + {act.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Dates & Budget */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <Input
-                      label="Start Date"
-                      type="date"
-                      required
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                    />
-
-                    <Input
-                      label="End Date"
-                      type="date"
-                      required
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                    />
-
-                    <Input
-                      label="Section Budget (₹ INR)"
-                      type="number"
-                      min="1"
-                      required
-                      value={sectionBudget}
-                      onChange={(e) => setSectionBudget(e.target.value)}
-                      placeholder="e.g. 15000"
-                    />
-                  </div>
-
-                  {/* Notes / Highlights */}
-                  <div className="space-y-1.5">
-                    <Label required className="text-xs font-medium text-foreground">
-                      Section Notes & Itinerary Goals
-                    </Label>
-                    <Textarea
-                      required
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Planned sights, hotel booking, transit, or tour notes..."
-                      rows={2}
-                      className="text-xs sm:text-sm"
-                    />
-                  </div>
-
-                  {formError && (
-                    <div className="p-2.5 rounded-[8px] bg-destructive/10 text-destructive text-xs flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                      <span>{formError}</span>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={resetForm}
-                      className="text-xs"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="sm"
-                      disabled={isSubmitting}
-                      className="text-xs gap-1.5"
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Check className="w-3.5 h-3.5" />
-                      )}
-                      <span>Add Leg to Itinerary</span>
-                    </Button>
-                  </div>
-                </form>
-              </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* + Add Another Section Action Button */}
-        {!isAddFormOpen && !editingStopId && (
-          <motion.div
-            whileHover={{ scale: 1.008 }}
-            whileTap={{ scale: 0.992 }}
-            transition={{ duration: 0.15 }}
-            className="pt-1"
-          >
-            <button
-              type="button"
-              onClick={handleOpenAddForm}
-              className="w-full py-3.5 px-4 rounded-[12px] border-2 border-dashed border-border hover:border-primary/60 bg-surface/50 hover:bg-surface text-muted-foreground hover:text-foreground text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-xs min-h-[48px]"
-            >
-              <Plus className="w-4 h-4 text-primary" />
-              <span>+ Add another Section</span>
-            </button>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Bottom Navigation / Action Bar */}
-      <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
-        <Link href="/trips/mine" className="w-full sm:w-auto">
-          <Button variant="secondary" size="md" className="w-full sm:w-auto text-xs">
-            <span>Back to Expeditions</span>
-          </Button>
-        </Link>
-
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
-          <Link href="/dashboard" className="w-full sm:w-auto">
-            <Button
-              variant="primary"
-              size="md"
-              className="w-full sm:w-auto text-xs gap-1.5"
-            >
-              <span>View Itinerary Journal</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Delete Confirmation Modal Dialog */}
-      <AnimatePresence>
-        {deletingStop && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 8 }}
-              transition={{ duration: 0.15 }}
-              className="w-full max-w-md bg-surface border border-border rounded-[16px] p-6 shadow-2xl space-y-4"
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="delete-dialog-title"
-              aria-describedby="delete-dialog-desc"
-            >
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-full bg-destructive/15 border border-destructive/30 flex items-center justify-center text-destructive shrink-0">
-                  <AlertTriangle className="w-5 h-5" />
-                </div>
-                <div className="space-y-1 min-w-0 flex-1">
-                  <h3 id="delete-dialog-title" className="text-base font-bold text-foreground">
-                    Delete Itinerary Section?
-                  </h3>
-                  <p id="delete-dialog-desc" className="text-xs text-muted-foreground leading-relaxed">
-                    Are you sure you want to remove the <strong className="text-foreground">{deletingStop.name}</strong> section from this expedition? This action cannot be undone.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+        {/* Add Another Section Action / Form */}
+        <div className="pt-2">
+          <AnimatePresence mode="wait">
+            {!isAddFormOpen ? (
+              <motion.div
+                key="add-button"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
                 <Button
                   type="button"
                   variant="secondary"
-                  size="sm"
-                  onClick={() => setDeletingStop(null)}
-                  disabled={deleteStopMutation.isPending}
-                  className="text-xs"
+                  size="md"
+                  onClick={handleOpenAddForm}
+                  className="w-full border-dashed border-2 border-border hover:border-primary/50 hover:bg-surface-hover transition-colors py-6 text-xs sm:text-sm font-semibold gap-2 text-foreground"
                 >
-                  Cancel
+                  <Plus className="w-4 h-4 text-primary" />
+                  <span>+ Add another Section</span>
                 </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => deleteStopMutation.mutate(deletingStop.id)}
-                  disabled={deleteStopMutation.isPending}
-                  className="text-xs gap-1.5"
-                >
-                  {deleteStopMutation.isPending ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-3.5 h-3.5" />
-                  )}
-                  <span>Delete Leg</span>
-                </Button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="add-form"
+                ref={addFormRef}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="scroll-mt-24"
+              >
+                <Card className="border-2 border-primary/70 bg-surface shadow-lg p-5 sm:p-6 rounded-[14px]">
+                  <form onSubmit={handleSubmitSection} className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-border pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs">
+                          <Plus className="w-3.5 h-3.5" />
+                        </div>
+                        <h3 className="text-base font-bold text-foreground">
+                          Add Destination Leg (Stop #{orderedStops.length + 1})
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={resetForm}
+                        aria-label="Close add form"
+                        className="p-1 rounded text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Destination City Input with built-in LeftIcon */}
+                    <div className="relative">
+                      <Input
+                        label="Destination City"
+                        required
+                        value={citySearch}
+                        onChange={(e) => {
+                          setCitySearch(e.target.value);
+                          setIsCityDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsCityDropdownOpen(true)}
+                        placeholder="Search city, state, or country (e.g. Udaipur, Tokyo, Paris)..."
+                        leftIcon={<Search className="w-4 h-4 text-muted-foreground" />}
+                      />
+
+                      {/* Autocomplete Dropdown */}
+                      {isCityDropdownOpen && searchResults.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1.5 bg-surface border border-border rounded-[10px] shadow-xl z-50 max-h-52 overflow-y-auto">
+                          {searchResults.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCity({ id: c.id, name: c.name, country: c.country });
+                                setCitySearch(`${c.name}, ${c.country}`);
+                                setIsCityDropdownOpen(false);
+                              }}
+                              className="w-full px-3.5 py-2.5 text-left hover:bg-surface-hover flex items-center justify-between text-xs transition-colors border-b border-border/40 last:border-0 cursor-pointer"
+                            >
+                              <span className="font-semibold text-foreground">
+                                {c.name},{" "}
+                                <span className="font-normal text-muted-foreground">
+                                  {c.country}
+                                </span>
+                              </span>
+                              <span className="text-[10px] font-mono text-primary font-semibold">
+                                {c.country === "India" ? "India" : "Global"}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dates & Budget */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <Input
+                        label="Start Date"
+                        type="date"
+                        required
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                      />
+
+                      <Input
+                        label="End Date"
+                        type="date"
+                        required
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                      />
+
+                      <Input
+                        label="Section Budget (₹ INR)"
+                        type="number"
+                        min="1"
+                        required
+                        value={sectionBudget}
+                        onChange={(e) => setSectionBudget(e.target.value)}
+                        placeholder="e.g. 15000"
+                      />
+                    </div>
+
+                    {/* Notes / Highlights */}
+                    <div className="space-y-1.5">
+                      <Label required className="text-xs font-medium text-foreground">
+                        Section Notes & Itinerary Goals
+                      </Label>
+                      <Textarea
+                        required
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Planned sights, hotel booking, transit, or tour notes..."
+                        rows={2}
+                        className="text-xs sm:text-sm"
+                      />
+                    </div>
+
+                    {/* Places & Sights Manager in Add Form */}
+                    <div className="space-y-2.5 pt-2 border-t border-border/60">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-primary" />
+                          <span>Places & Activities in this Leg ({formPlaces.length})</span>
+                        </Label>
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          Add sights to leg
+                        </span>
+                      </div>
+
+                      {/* Current Places in this Leg */}
+                      {formPlaces.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-[8px] bg-surface-subtle border border-border/60">
+                          {formPlaces.map((p, pIdx) => (
+                            <span
+                              key={p.id || pIdx}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-surface border border-primary/30 text-xs text-foreground font-medium shadow-2xs"
+                            >
+                              <Check className="w-3 h-3 text-primary shrink-0" />
+                              <span>{p.activityName}</span>
+                              {p.costOverride !== undefined && p.costOverride !== null && (
+                                <span className="text-[10px] font-mono text-muted-foreground">
+                                  {p.costOverride === 0 ? "Free" : `₹${p.costOverride}`}
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFormPlace(pIdx)}
+                                aria-label={`Remove ${p.activityName}`}
+                                className="p-0.5 rounded hover:bg-destructive/15 hover:text-destructive text-muted-foreground transition-colors cursor-pointer ml-0.5"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add new place input row */}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={newPlaceInput}
+                          onChange={(e) => setNewPlaceInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddPlaceToForm();
+                            }
+                          }}
+                          placeholder="Add sight or attraction (e.g. Sabarmati Ashram, Kankaria Lake)..."
+                          className="flex-1 h-9 px-3 rounded-[8px] bg-input-bg border border-input-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleAddPlaceToForm()}
+                          disabled={!newPlaceInput.trim()}
+                          className="h-9 px-3 text-xs gap-1 shrink-0 font-semibold"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-primary" />
+                          <span>Add Place</span>
+                        </Button>
+                      </div>
+
+                      {/* City Suggestions for quick 1-click addition */}
+                      {selectedCity && cityActivities.length > 0 && (
+                        <div className="space-y-1 pt-1">
+                          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider block">
+                            Suggested for {selectedCity.name}:
+                          </span>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {cityActivities.map((act) => {
+                              const isAdded = formPlaces.some(
+                                (p) =>
+                                  p.activityName.toLowerCase() === act.name.toLowerCase()
+                              );
+                              return (
+                                <button
+                                  key={act.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isAdded) {
+                                      setFormPlaces((prev) =>
+                                        prev.filter(
+                                          (p) =>
+                                            p.activityName.toLowerCase() !==
+                                            act.name.toLowerCase()
+                                        )
+                                      );
+                                    } else {
+                                      handleAddPlaceToForm(act.name, act.cost, act.id);
+                                    }
+                                  }}
+                                  className={`px-2 py-0.5 rounded-[4px] text-[11px] font-mono transition-colors cursor-pointer border ${
+                                    isAdded
+                                      ? "bg-primary/15 border-primary/40 text-primary font-semibold"
+                                      : "bg-surface-subtle border-border/70 text-muted-foreground hover:text-foreground hover:border-primary/40"
+                                  }`}
+                                >
+                                  {isAdded ? `✓ ${act.name}` : `+ ${act.name}`}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {formError && (
+                      <div className="p-2.5 rounded-[8px] bg-destructive/10 text-destructive text-xs flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{formError}</span>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={resetForm}
+                        className="text-xs"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="sm"
+                        disabled={isSubmitting}
+                        className="text-xs gap-1.5"
+                      >
+                        {isSubmitting ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
+                        )}
+                        <span>Save Section</span>
+                      </Button>
+                    </div>
+                  </form>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Dialog Modal */}
+      {deletingStop && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+        >
+          <div className="w-full max-w-md rounded-[16px] bg-surface border border-border p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-destructive">
+              <div className="w-10 h-10 rounded-full bg-destructive/10 border border-destructive/30 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
               </div>
-            </motion.div>
+              <div>
+                <h3
+                  id="delete-dialog-title"
+                  className="text-base font-bold text-foreground"
+                >
+                  Delete Itinerary Section?
+                </h3>
+                <span className="text-xs text-muted-foreground font-mono">
+                  This action cannot be undone.
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Are you sure you want to remove the{" "}
+              <strong className="text-foreground">{deletingStop.name}</strong>{" "}
+              section from this expedition? Remaining legs will be re-indexed
+              automatically in MongoDB.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setDeletingStop(null)}
+                disabled={deleteStopMutation.isPending}
+                className="text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => deleteStopMutation.mutate(deletingStop.id)}
+                disabled={deleteStopMutation.isPending}
+                className="text-xs gap-1.5 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteStopMutation.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                <span>Confirm Delete</span>
+              </Button>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }

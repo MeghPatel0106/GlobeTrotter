@@ -5,19 +5,28 @@ import { CitiesService } from "./cities.service";
 export class CitiesController {
   constructor(private readonly citiesService: CitiesService) {}
 
+  @Get("countries")
+  async getCountries() {
+    return this.citiesService.getDistinctCountries();
+  }
+
   @Get("top")
-  async getTopCities(@Query("limit") limit?: string) {
+  async getTopCities(
+    @Query("limit") limit?: string,
+    @Query("country") country?: string
+  ) {
     const numLimit = limit ? parseInt(limit, 10) : 5;
-    return this.citiesService.getTopCities(numLimit);
+    return this.citiesService.getTopCities(numLimit, country);
   }
 
   @Get("search")
   async searchCities(
     @Query("q") query?: string,
-    @Query("limit") limit?: string
+    @Query("limit") limit?: string,
+    @Query("country") country?: string
   ) {
     const numLimit = limit ? parseInt(limit, 10) : 10;
-    return this.citiesService.searchCities(query || "", numLimit);
+    return this.citiesService.searchCities(query || "", numLimit, country);
   }
 
   @Get(":id/activities")
