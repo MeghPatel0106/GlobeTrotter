@@ -14,6 +14,7 @@ import { TripsService } from "./trips.service";
 import { CreateTripDto } from "./dto/create-trip.dto";
 import { AddStopDto, UpdateStopDto, ReorderStopsDto } from "./dto/add-stop.dto";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { Public } from "../auth/decorators/public.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
 @UseGuards(JwtAuthGuard)
@@ -21,14 +22,40 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 export class TripsController {
   constructor(private readonly tripsService: TripsService) {}
 
+  @Public()
+  @Get("share/:token")
+  async getPublicTrip(@Param("token") token: string) {
+    return this.tripsService.getPublicTripByToken(token);
+  }
+
+  @Post("share/:token/copy")
+  async copyPublicTrip(
+    @CurrentUser("id") userId: string,
+    @Param("token") token: string
+  ) {
+    return this.tripsService.copyPublicTrip(userId, token);
+  }
+
+  @Post(":id/share")
+  async shareTrip(
+    @CurrentUser("id") userId: string,
+    @Param("id") tripId: string
+  ) {
+    return this.tripsService.generateShareToken(userId, tripId);
+  }
+
   @Get()
   async getUserTrips(
     @CurrentUser("id") userId: string,
     @Query("limit") limit?: string,
-    @Query("sort") sort?: string
+    @Query("sort") sort?: string,
+    @Query("month") month?: string,
+    @Query("year") year?: string
   ) {
-    const numLimit = limit ? parseInt(limit, 10) : 10;
-    return this.tripsService.getUserTrips(userId, numLimit, sort || "recent");
+    const numLimit = limit ? parseInt(limit, 10) : 50;
+    const numMonth = month ? parseInt(month, 10) : undefined;
+    const numYear = year ? parseInt(year, 10) : undefined;
+    return this.tripsService.getUserTrips(userId, numLimit, sort || "recent", numMonth, numYear);
   }
 
   @Post()

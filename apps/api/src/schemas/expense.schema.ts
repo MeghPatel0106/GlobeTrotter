@@ -26,13 +26,16 @@ export class Expense {
   @Prop({ type: Types.ObjectId, required: false, default: null })
   stopId?: Types.ObjectId;
 
+  @Prop({ required: false, default: null })
+  dayNumber?: number;
+
   @Prop({ type: String, enum: ExpenseCategory, default: ExpenseCategory.OTHER })
   category: ExpenseCategory;
 
   @Prop({ required: true })
   amount: number;
 
-  @Prop({ required: true, default: "USD" })
+  @Prop({ required: true, default: "INR" })
   currency: string;
 
   @Prop({ required: false, default: null })

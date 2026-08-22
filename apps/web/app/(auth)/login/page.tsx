@@ -27,11 +27,22 @@ import { useAuth } from "@/lib/auth-context";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnTo = searchParams.get("returnTo") || "/dashboard";
+  const returnTo = searchParams.get("returnTo");
 
-  const { login } = useAuth();
+  const { login, user: currentUser, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [serverError, setServerError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // If already authenticated, redirect appropriately
+  React.useEffect(() => {
+    if (!isAuthLoading && isAuthenticated && currentUser) {
+      if (currentUser.role === "ADMIN") {
+        router.replace(returnTo && returnTo !== "/dashboard" ? returnTo : "/admin");
+      } else {
+        router.replace(returnTo || "/dashboard");
+      }
+    }
+  }, [isAuthLoading, isAuthenticated, currentUser, returnTo, router]);
 
   const {
     register,
@@ -50,11 +61,18 @@ function LoginForm() {
     setIsSubmitting(true);
 
     try {
-      await login(data);
-      toast.success("Welcome back! Loading your travel logs...", {
-        duration: 2000,
-      });
-      router.push(returnTo);
+      const loggedUser = await login(data);
+      if (loggedUser?.role === "ADMIN") {
+        toast.success("Welcome back, Administrator! Opening Admin Center...", {
+          duration: 2000,
+        });
+        router.push(returnTo && returnTo !== "/dashboard" ? returnTo : "/admin");
+      } else {
+        toast.success("Welcome back! Loading your travel logs...", {
+          duration: 2000,
+        });
+        router.push(returnTo || "/dashboard");
+      }
     } catch (err: any) {
       const msg =
         err?.message || "Invalid email/username or password. Please try again.";

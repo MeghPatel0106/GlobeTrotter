@@ -32,7 +32,7 @@ const communityDispatches = [
     route: "Tokyo → Takayama → Shirakawa-go → Kyoto",
     date: "August 18, 2026",
     days: "10 Days",
-    budget: "₹1,95,000 est.",
+    budget: "¥320,000 est.",
     likes: 42,
     excerpt:
       "Staring out the window of the Hida Wide View express through forested ravines was the highlight of this route. Make sure to reserve morning tea at Uji before entering Kyoto.",
@@ -47,7 +47,7 @@ const communityDispatches = [
     route: "Florence → San Gimignano → Siena → Val d'Orcia",
     date: "August 14, 2026",
     days: "7 Days",
-    budget: "₹1,50,000 est.",
+    budget: "€1,650 est.",
     likes: 38,
     excerpt:
       "Avoid driving inside Florence's ZTL zone. Pick up your rental car near the airport on Day 3 before embarking south across the Cypress-lined hills of Crete Senesi.",
@@ -62,7 +62,7 @@ const communityDispatches = [
     route: "Oaxaca City → Hierve el Agua → Mazunte → Puerto Escondido",
     date: "August 09, 2026",
     days: "8 Days",
-    budget: "₹1,05,000 est.",
+    budget: "Mex$22,000 est.",
     likes: 29,
     excerpt:
       "Spend at least three nights in Oaxaca Centro to explore the 20 de Noviembre market and traditional ceramic workshops in San Bartolo Coyotepec.",

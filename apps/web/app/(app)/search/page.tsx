@@ -23,6 +23,7 @@ import {
   MotionFadeRise,
 } from "@globetrotter/ui";
 import { citiesApi, City } from "@/lib/api";
+import { getCurrencySymbol } from "@/lib/currency";
 
 const regionFilters = [
   { id: "all", label: "All Destinations" },
@@ -159,7 +160,8 @@ export default function SearchPage() {
       ) : filteredDestinations.length > 0 ? (
         <MotionStaggerContainer staggerDelay={0.04} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredDestinations.map((dest) => {
-            const costBadges = "₹".repeat(dest.costIndex || 2);
+            const sym = getCurrencySymbol(dest.country);
+            const costBadges = sym.repeat(dest.costIndex || 2);
 
             return (
               <MotionFadeRise key={dest.id}>

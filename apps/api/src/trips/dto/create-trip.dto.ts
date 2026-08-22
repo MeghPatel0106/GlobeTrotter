@@ -21,6 +21,10 @@ export class TripItineraryItemDto {
 
   @IsString()
   @IsOptional()
+  startTime?: string;
+
+  @IsString()
+  @IsOptional()
   cityId?: string;
 
   @IsString()

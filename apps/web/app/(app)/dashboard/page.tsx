@@ -32,6 +32,7 @@ import {
 } from "@globetrotter/ui";
 import { useAuth } from "@/lib/auth-context";
 import { citiesApi, tripsApi, City, Trip } from "@/lib/api";
+import { getCurrencySymbol } from "@/lib/currency";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -432,7 +433,8 @@ export default function DashboardPage() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
           >
             {displayedCities.map((city) => {
-              const costBadges = Array.from({ length: city.costIndex || 3 }, () => "₹").join("");
+              const sym = getCurrencySymbol(city.country);
+              const costBadges = Array.from({ length: city.costIndex || 3 }, () => sym).join("");
 
               return (
                 <MotionFadeRise key={city.id}>

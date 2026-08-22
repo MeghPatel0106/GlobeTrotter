@@ -42,6 +42,7 @@ import {
 } from "@globetrotter/ui";
 import { citiesApi, tripsApi, City, Activity } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { getCurrencyForCountry, getCurrencySymbol, formatMoney } from "@/lib/currency";
 
 interface SelectedPlace {
   id: string;
@@ -69,7 +70,9 @@ function CreateTripForm() {
   // Country selection state (separate dropdown, chosen BEFORE cities)
   const [selectedCountry, setSelectedCountry] = React.useState<string>(initialCountry || "");
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = React.useState(false);
+  const [countrySearchText, setCountrySearchText] = React.useState("");
   const countryDropdownRef = React.useRef<HTMLDivElement>(null);
+  const countrySearchInputRef = React.useRef<HTMLInputElement>(null);
 
   // Multi-city destinations state
   const [selectedCities, setSelectedCities] = React.useState<City[]>([]);
@@ -168,7 +171,35 @@ function CreateTripForm() {
     staleTime: 10 * 60 * 1000,
   });
 
-  // Live search for cities (filtered strictly by selectedCountry)
+  // Filtered countries based on user search in the country tab
+  const filteredCountries = React.useMemo(() => {
+    if (!countrySearchText.trim()) return availableCountries;
+    const q = countrySearchText.toLowerCase().trim();
+    return availableCountries.filter((c) => c.toLowerCase().includes(q));
+  }, [availableCountries, countrySearchText]);
+
+  // Featured / popular countries shown initially
+  const popularCountries = React.useMemo(() => {
+    const topList = [
+      "India",
+      "USA",
+      "France",
+      "Italy",
+      "Japan",
+      "Spain",
+      "United Arab Emirates",
+      "Thailand",
+      "Indonesia",
+      "United Kingdom",
+      "Germany",
+      "Switzerland",
+      "Egypt",
+      "Mexico",
+    ];
+    return availableCountries.filter((c) => topList.includes(c));
+  }, [availableCountries]);
+
+  // Live search for cities from our DB (featured, with activities)
   const { data: searchResults = [], isLoading: isSearchLoading } = useQuery({
     queryKey: ["cities", "search", cityInputText, selectedCountry],
     queryFn: () =>
@@ -176,6 +207,24 @@ function CreateTripForm() {
     enabled: !!selectedCountry && isCityDropdownOpen && cityInputText.trim().length > 0,
     staleTime: 30 * 1000,
   });
+
+  // Live search for cities from external API (comprehensive — any real city in the country)
+  const { data: externalCityNames = [], isLoading: isExternalLoading } = useQuery({
+    queryKey: ["cities", "external-search", cityInputText, selectedCountry],
+    queryFn: () =>
+      citiesApi.searchExternal(selectedCountry!, cityInputText.trim(), 15),
+    enabled: !!selectedCountry && isCityDropdownOpen && cityInputText.trim().length > 0,
+    staleTime: 60 * 1000,
+  });
+
+  // Merge: DB cities first, then external cities not already in DB results
+  const mergedExternalCities = React.useMemo(() => {
+    const dbNames = new Set(searchResults.map((c) => c.name.toLowerCase()));
+    const selectedNames = new Set(selectedCities.map((c) => c.name.toLowerCase()));
+    return externalCityNames
+      .filter((name) => !dbNames.has(name.toLowerCase()) && !selectedNames.has(name.toLowerCase()))
+      .slice(0, 10);
+  }, [searchResults, externalCityNames, selectedCities]);
 
   // Top suggestions when search is empty (filtered strictly by selectedCountry)
   const { data: topCities = [] } = useQuery({
@@ -207,8 +256,22 @@ function CreateTripForm() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const createTripCurrency = getCurrencyForCountry(selectedCountry || selectedCities[0]?.country || "India");
+  const createTripCurrencySymbol = createTripCurrency.symbol;
+
+  // Toggle country dropdown and auto-focus search input
+  const toggleCountryDropdown = () => {
+    const next = !isCountryDropdownOpen;
+    setIsCountryDropdownOpen(next);
+    if (next) {
+      setTimeout(() => countrySearchInputRef.current?.focus(), 50);
+    }
+  };
+
   // Handle changing the country dropdown
   const handleCountryChange = (country: string) => {
+    setCountrySearchText("");
+    setIsCountryDropdownOpen(false);
     if (country === selectedCountry) return;
     // Reset cities and places when country changes
     setSelectedCities([]);
@@ -216,8 +279,6 @@ function CreateTripForm() {
     setSelectedCountry(country);
     setCityInputText("");
     setIsAddingNextCity(false);
-    setIsCityDropdownOpen(false);
-    setIsCountryDropdownOpen(false);
     isTripNameCustomized.current = false;
     setTripName("");
     toast.success(`Destination country set to ${country}`);
@@ -250,6 +311,41 @@ function CreateTripForm() {
     }
 
     const updated = [...selectedCities, city];
+    setSelectedCities(updated);
+    updateTripNameFromCities(updated);
+    setCityInputText("");
+    setIsCityDropdownOpen(false);
+    setIsAddingNextCity(false);
+
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.cities;
+      return next;
+    });
+  };
+
+  // Handle selecting an external city (just a name string from countriesnow API)
+  const handleSelectExternalCity = (cityName: string) => {
+    const isAlreadySelected = selectedCities.some(
+      (c) => c.name.toLowerCase() === cityName.toLowerCase()
+    );
+    if (isAlreadySelected) {
+      toast.error(`${cityName} is already in your destination sequence.`);
+      setCityInputText("");
+      return;
+    }
+
+    const externalCity: City = {
+      id: `ext-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      name: cityName,
+      country: selectedCountry || "",
+      popularityScore: 0,
+      costIndex: 2,
+      description: "",
+      region: "global",
+    } as City;
+
+    const updated = [...selectedCities, externalCity];
     setSelectedCities(updated);
     updateTripNameFromCities(updated);
     setCityInputText("");
@@ -400,7 +496,7 @@ function CreateTripForm() {
     }
 
     if (!budget || isNaN(Number(budget)) || Number(budget) <= 0) {
-      newErrors.budget = "Target budget is required and must be greater than ₹0.";
+      newErrors.budget = `Target budget is required and must be greater than ${createTripCurrencySymbol}0.`;
     }
 
     if (!notes.trim()) {
@@ -552,7 +648,7 @@ function CreateTripForm() {
               />
             </div>
 
-            {/* STEP 1: SELECT COUNTRY (separate dropdown — must be chosen first) */}
+            {/* STEP 1: SELECT COUNTRY (separate dropdown with search filter) */}
             <div className="space-y-2 relative" ref={countryDropdownRef}>
               <Label required htmlFor="country-select">
                 Destination Country
@@ -562,7 +658,7 @@ function CreateTripForm() {
                 <button
                   type="button"
                   id="country-select"
-                  onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                  onClick={toggleCountryDropdown}
                   disabled={isSubmitting}
                   className={`w-full h-11 px-3.5 rounded-[10px] border text-left flex items-center justify-between transition-colors cursor-pointer ${
                     selectedCountry
@@ -570,48 +666,166 @@ function CreateTripForm() {
                       : "bg-input-bg border-input-border text-muted-foreground"
                   } ${errors.country ? "border-destructive" : ""} hover:border-primary/60`}
                 >
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <Globe2 className={`w-4 h-4 shrink-0 ${selectedCountry ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className={`text-sm ${selectedCountry ? "font-semibold text-foreground" : ""}`}>
+                    <span className={`text-sm truncate ${selectedCountry ? "font-semibold text-foreground" : ""}`}>
                       {selectedCountry || "Select a country to explore..."}
                     </span>
                   </div>
-                  <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${isCountryDropdownOpen ? "rotate-90" : ""}`} />
+                  <div className="flex items-center gap-2 shrink-0">
+                    {selectedCountry && (
+                      <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                        Selected
+                      </span>
+                    )}
+                    <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform duration-150 ${isCountryDropdownOpen ? "rotate-90" : ""}`} />
+                  </div>
                 </button>
 
-                {/* Country Dropdown List */}
+                {/* Country Dropdown List with Search Bar */}
                 {isCountryDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1.5 max-h-64 overflow-y-auto rounded-[10px] bg-surface border border-border shadow-xl z-50 divide-y divide-border/60">
-                    {availableCountries.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                        <span>Loading countries...</span>
-                      </div>
-                    ) : (
-                      availableCountries.map((country) => {
-                        const isActive = selectedCountry === country;
-                        return (
+                  <div className="absolute top-full left-0 right-0 mt-1.5 max-h-80 overflow-hidden flex flex-col rounded-[10px] bg-surface border border-border shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                    {/* Search Input Header */}
+                    <div className="p-2.5 border-b border-border bg-surface-subtle/70 sticky top-0 z-10">
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                        <input
+                          ref={countrySearchInputRef}
+                          type="text"
+                          value={countrySearchText}
+                          onChange={(e) => setCountrySearchText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (filteredCountries.length > 0) {
+                                handleCountryChange(filteredCountries[0]);
+                              }
+                            } else if (e.key === "Escape") {
+                              setIsCountryDropdownOpen(false);
+                            }
+                          }}
+                          placeholder="Search destination country (e.g. India, USA, France, Japan)..."
+                          className="w-full h-9 pl-9 pr-8 text-xs rounded-[7px] bg-surface border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+                        />
+                        {countrySearchText && (
                           <button
-                            key={country}
                             type="button"
-                            onClick={() => handleCountryChange(country)}
-                            className={`w-full px-4 py-2.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
-                              isActive ? "bg-primary/10" : "hover:bg-surface-hover"
-                            }`}
+                            onClick={() => {
+                              setCountrySearchText("");
+                              countrySearchInputRef.current?.focus();
+                            }}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer"
                           >
-                            <div className="flex items-center gap-2.5">
-                              <Globe2 className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
-                              <span className={`text-sm ${isActive ? "font-bold text-primary" : "font-medium text-foreground"}`}>
-                                {country}
-                              </span>
-                            </div>
-                            {isActive && (
-                              <Check className="w-4 h-4 text-primary" />
-                            )}
+                            <X className="w-3 h-3" />
                           </button>
-                        );
-                      })
-                    )}
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Scrollable list of countries */}
+                    <div className="overflow-y-auto max-h-64 divide-y divide-border/60">
+                      {availableCountries.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                          <span>Loading countries...</span>
+                        </div>
+                      ) : countrySearchText.trim().length > 0 ? (
+                        filteredCountries.length > 0 ? (
+                          <div>
+                            <div className="px-3.5 py-1.5 bg-surface-subtle/50 text-[10px] font-mono text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                              <span>Matching Countries ({filteredCountries.length})</span>
+                              <span className="text-[9px] text-primary">Press Enter to select</span>
+                            </div>
+                            {filteredCountries.map((country) => {
+                              const isActive = selectedCountry === country;
+                              return (
+                                <button
+                                  key={country}
+                                  type="button"
+                                  onClick={() => handleCountryChange(country)}
+                                  className={`w-full px-4 py-2.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                                    isActive ? "bg-primary/10 font-semibold" : "hover:bg-surface-hover"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <Globe2 className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                                    <span className={`text-sm ${isActive ? "font-bold text-primary" : "font-medium text-foreground"}`}>
+                                      {country}
+                                    </span>
+                                  </div>
+                                  {isActive && <Check className="w-4 h-4 text-primary" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-5 text-center text-xs text-muted-foreground">
+                            <p>No countries found matching &quot;{countrySearchText}&quot;.</p>
+                            <p className="text-[11px] text-muted-foreground/70 mt-1">Try searching by full country name.</p>
+                          </div>
+                        )
+                      ) : (
+                        <div>
+                          {/* Popular countries quick list */}
+                          {popularCountries.length > 0 && (
+                            <div>
+                              <div className="px-3.5 py-1.5 bg-surface-subtle/50 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                                Popular Destinations
+                              </div>
+                              {popularCountries.map((country) => {
+                                const isActive = selectedCountry === country;
+                                return (
+                                  <button
+                                    key={`pop-${country}`}
+                                    type="button"
+                                    onClick={() => handleCountryChange(country)}
+                                    className={`w-full px-4 py-2.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                                      isActive ? "bg-primary/10 font-semibold" : "hover:bg-surface-hover"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5">
+                                      <Globe2 className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                                      <span className={`text-sm ${isActive ? "font-bold text-primary" : "font-medium text-foreground"}`}>
+                                        {country}
+                                      </span>
+                                    </div>
+                                    {isActive && <Check className="w-4 h-4 text-primary" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* All countries section */}
+                          <div>
+                            <div className="px-3.5 py-1.5 bg-surface-subtle/50 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                              All Countries ({availableCountries.length})
+                            </div>
+                            {availableCountries.map((country) => {
+                              const isActive = selectedCountry === country;
+                              return (
+                                <button
+                                  key={country}
+                                  type="button"
+                                  onClick={() => handleCountryChange(country)}
+                                  className={`w-full px-4 py-2.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                                    isActive ? "bg-primary/10 font-semibold" : "hover:bg-surface-hover"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <Globe2 className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                                    <span className={`text-sm ${isActive ? "font-bold text-primary" : "font-medium text-foreground"}`}>
+                                      {country}
+                                    </span>
+                                  </div>
+                                  {isActive && <Check className="w-4 h-4 text-primary" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -650,6 +864,10 @@ function CreateTripForm() {
                         e.preventDefault();
                         if (searchResults.length > 0) {
                           handleSelectCity(searchResults[0]);
+                        } else if (mergedExternalCities.length > 0) {
+                          handleSelectExternalCity(mergedExternalCities[0]);
+                        } else if (cityInputText.trim().length > 0) {
+                          handleSelectExternalCity(cityInputText.trim());
                         }
                       }
                     }}
@@ -661,49 +879,129 @@ function CreateTripForm() {
 
                   {/* Autocomplete Dropdown */}
                   {isCityDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1.5 max-h-64 overflow-y-auto rounded-[10px] bg-surface border border-border shadow-xl z-50 divide-y divide-border/60">
-                      {isSearchLoading ? (
+                    <div className="absolute top-full left-0 right-0 mt-1.5 max-h-72 overflow-y-auto rounded-[10px] bg-surface border border-border shadow-xl z-50 divide-y divide-border/60">
+                      {(isSearchLoading || isExternalLoading) && searchResults.length === 0 && mergedExternalCities.length === 0 ? (
                         <div className="p-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
                           <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
                           <span>Searching {selectedCountry} destinations...</span>
                         </div>
                       ) : cityInputText.trim().length > 0 ? (
-                        searchResults.length > 0 ? (
-                          searchResults.map((city) => {
-                            const isAlready = selectedCities.some(
-                              (c) => c.name.toLowerCase() === city.name.toLowerCase() || (c.id && c.id === city.id)
-                            );
-                            return (
-                              <button
-                                key={city.id}
-                                type="button"
-                                onClick={() => handleSelectCity(city)}
-                                className={`w-full px-4 py-2.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
-                                  isAlready ? "bg-primary/10 opacity-70" : "hover:bg-surface-hover"
-                                }`}
-                              >
-                                <div className="flex items-center gap-2.5">
-                                  <MapPin className="w-4 h-4 text-primary shrink-0" />
-                                  <div>
-                                    <span className="font-semibold text-sm text-foreground block">{city.name}</span>
-                                    <span className="text-xs text-muted-foreground block">{city.country}</span>
+                        <>
+                          {/* DB results (featured cities with curated activities) */}
+                          {searchResults.length > 0 && (
+                            <div>
+                              <div className="px-3.5 py-1.5 bg-surface-subtle/50 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                                Featured Destinations
+                              </div>
+                              {searchResults.map((city) => {
+                                const isAlready = selectedCities.some(
+                                  (c) => c.name.toLowerCase() === city.name.toLowerCase() || (c.id && c.id === city.id)
+                                );
+                                return (
+                                  <button
+                                    key={city.id}
+                                    type="button"
+                                    onClick={() => handleSelectCity(city)}
+                                    className={`w-full px-4 py-2.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                                      isAlready ? "bg-primary/10 opacity-70" : "hover:bg-surface-hover"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5">
+                                      <MapPin className="w-4 h-4 text-primary shrink-0" />
+                                      <div>
+                                        <span className="font-semibold text-sm text-foreground block">{city.name}</span>
+                                        <span className="text-xs text-muted-foreground block">{city.country} · Curated</span>
+                                      </div>
+                                    </div>
+                                    {isAlready ? (
+                                      <span className="text-[10px] font-mono text-primary font-semibold px-2 py-0.5 rounded bg-primary/15">Added</span>
+                                    ) : (
+                                      <span className="text-[11px] font-mono text-primary font-semibold flex items-center gap-1">
+                                        <Plus className="w-3 h-3" /><span>Select</span>
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* External API results (comprehensive city list) */}
+                          {mergedExternalCities.length > 0 && (
+                            <div>
+                              <div className="px-3.5 py-1.5 bg-surface-subtle/50 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                                More {selectedCountry} Cities
+                              </div>
+                              {mergedExternalCities.map((cityName) => (
+                                <button
+                                  key={cityName}
+                                  type="button"
+                                  onClick={() => handleSelectExternalCity(cityName)}
+                                  className="w-full px-4 py-2.5 text-left flex items-center justify-between hover:bg-surface-hover transition-colors cursor-pointer"
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                                    <div>
+                                      <span className="font-medium text-sm text-foreground block">{cityName}</span>
+                                      <span className="text-xs text-muted-foreground block">{selectedCountry}</span>
+                                    </div>
                                   </div>
-                                </div>
-                                {isAlready ? (
-                                  <span className="text-[10px] font-mono text-primary font-semibold px-2 py-0.5 rounded bg-primary/15">Added</span>
-                                ) : (
                                   <span className="text-[11px] font-mono text-primary font-semibold flex items-center gap-1">
-                                    <Plus className="w-3 h-3" /><span>Select</span>
+                                    <Plus className="w-3 h-3" /><span>Add</span>
                                   </span>
-                                )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Loading indicator for external results */}
+                          {isExternalLoading && searchResults.length > 0 && (
+                            <div className="px-4 py-2 text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+                              <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                              <span>Loading more cities...</span>
+                            </div>
+                          )}
+
+                          {/* No results at all — offer to add as custom city */}
+                          {searchResults.length === 0 && mergedExternalCities.length === 0 && !isSearchLoading && !isExternalLoading && (
+                            <div className="p-3">
+                              <p className="text-xs text-muted-foreground text-center mb-2">
+                                No cities found matching &quot;{cityInputText}&quot; in {selectedCountry}.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectExternalCity(cityInputText.trim())}
+                                className="w-full px-3 py-2 text-left flex items-center gap-2.5 rounded-[8px] border border-dashed border-primary/40 hover:bg-primary/5 transition-colors cursor-pointer"
+                              >
+                                <Plus className="w-4 h-4 text-primary shrink-0" />
+                                <div>
+                                  <span className="font-semibold text-sm text-primary block">
+                                    Add &quot;{cityInputText.trim()}&quot; as a custom city
+                                  </span>
+                                  <span className="text-xs text-muted-foreground block">in {selectedCountry}</span>
+                                </div>
                               </button>
-                            );
-                          })
-                        ) : (
-                          <div className="p-4 text-center text-xs text-muted-foreground">
-                            No {selectedCountry} destinations found matching &quot;{cityInputText}&quot;.
-                          </div>
-                        )
+                            </div>
+                          )}
+
+                          {/* Always show custom city option at the bottom when there ARE results */}
+                          {(searchResults.length > 0 || mergedExternalCities.length > 0) &&
+                            cityInputText.trim().length > 1 &&
+                            !selectedCities.some((c) => c.name.toLowerCase() === cityInputText.trim().toLowerCase()) &&
+                            !searchResults.some((c) => c.name.toLowerCase() === cityInputText.trim().toLowerCase()) &&
+                            !mergedExternalCities.some((n) => n.toLowerCase() === cityInputText.trim().toLowerCase()) && (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectExternalCity(cityInputText.trim())}
+                              className="w-full px-4 py-2.5 text-left flex items-center gap-2.5 hover:bg-surface-hover transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-4 h-4 text-primary shrink-0" />
+                              <span className="text-sm text-primary font-medium">
+                                Add &quot;{cityInputText.trim()}&quot; as custom city in {selectedCountry}
+                              </span>
+                            </button>
+                          )}
+                        </>
                       ) : (
                         <div>
                           <div className="px-3.5 py-2 bg-surface-subtle/50 text-[11px] font-mono text-muted-foreground uppercase tracking-wider">
@@ -845,7 +1143,7 @@ function CreateTripForm() {
                       </span>
                       {place.cost !== undefined && place.cost > 0 && (
                         <span className="text-[10px] font-mono text-muted-foreground">
-                          ₹{place.cost}
+                          {getCurrencySymbol(selectedCountry)}{place.cost}
                         </span>
                       )}
                       <button
@@ -913,8 +1211,8 @@ function CreateTripForm() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 type="number"
-                label="Target Budget (₹ INR)"
-                placeholder="e.g. 25000"
+                label={`Target Budget (${createTripCurrencySymbol} ${createTripCurrency.code})`}
+                placeholder={`e.g. 25000 in ${createTripCurrency.code}`}
                 min={1}
                 required
                 value={budget}
@@ -1198,7 +1496,9 @@ function CreateTripForm() {
 
                             <div className="text-right shrink-0 flex flex-col items-end gap-1">
                               <span className="text-xs font-mono font-bold text-foreground block">
-                                {act.cost === 0 ? "Free" : `₹${act.cost}`}
+                                {act.cost === 0
+                                  ? "Free"
+                                  : `${getCurrencySymbol((act as any).country || selectedCountry)}${act.cost}`}
                               </span>
                               {act.durationMinutes && (
                                 <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5 justify-end">

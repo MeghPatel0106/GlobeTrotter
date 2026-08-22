@@ -3,13 +3,20 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
+import * as crypto from "crypto";
 import { Trip, TripDocument } from "../schemas/trip.schema";
 import { City, CityDocument } from "../schemas/city.schema";
 import { CreateTripDto } from "./dto/create-trip.dto";
 import { AddStopDto, UpdateStopDto } from "./dto/add-stop.dto";
+import {
+  CreateItineraryItemDto,
+  UpdateItineraryItemDto,
+  ReorderItineraryItemsDto,
+} from "./dto/itinerary-item.dto";
 import { TripStatus, Visibility } from "../schemas/enums";
 
 @Injectable()
@@ -21,13 +28,40 @@ export class TripsService {
 
   async getUserTrips(
     userId: string,
-    limit = 10,
-    sort = "recent"
+    limit = 50,
+    sort = "recent",
+    month?: number,
+    year?: number
   ): Promise<Trip[]> {
+    const query: any = { userId: new Types.ObjectId(userId) };
+
+    if (year && month) {
+      const startOfMonth = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+      const endOfMonth = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+
+      query.$or = [
+        {
+          startDate: { $lte: endOfMonth },
+          endDate: { $gte: startOfMonth },
+        },
+        {
+          startDate: { $gte: startOfMonth, $lte: endOfMonth },
+        },
+        {
+          "stops.startDate": { $lte: endOfMonth },
+          "stops.endDate": { $gte: startOfMonth },
+        },
+      ];
+    } else if (year) {
+      const startOfYear = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+      const endOfYear = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999));
+      query.startDate = { $gte: startOfYear, $lte: endOfYear };
+    }
+
     const sortOption: any = sort === "recent" ? { createdAt: -1 } : { startDate: 1 };
 
     return this.tripModel
-      .find({ userId: new Types.ObjectId(userId) })
+      .find(query)
       .sort(sortOption)
       .limit(limit)
       .exec();
@@ -121,14 +155,24 @@ export class TripsService {
       const stopStart = new Date(startDate.getTime() + startDayOffset * 86400000);
       const stopEnd = new Date(startDate.getTime() + Math.max(startDayOffset, endDayOffset) * 86400000);
 
-      // Collect places/activities belonging to this stop
-      const stopPlaces = (c.places || []).concat(
+      // Collect unique places/activities belonging to this stop
+      const rawPlaces = (c.places || []).concat(
         (dto.places || []).filter(
           (p) =>
             (p.cityId && c.cityId && p.cityId === c.cityId) ||
             (p.cityName && p.cityName.toLowerCase() === c.cityName.toLowerCase())
         )
       );
+
+      const seenPlaceNames = new Set<string>();
+      const stopPlaces = rawPlaces.filter((p) => {
+        const key = p.activityName.trim().toLowerCase();
+        if (seenPlaceNames.has(key)) return false;
+        seenPlaceNames.add(key);
+        return true;
+      });
+
+      const standardSlots = ["08:30 AM", "11:30 AM", "02:30 PM", "05:30 PM", "07:30 PM"];
 
       const itineraryItems = stopPlaces.map((p, pIdx) => {
         let actObjectId: Types.ObjectId | undefined = undefined;
@@ -139,6 +183,7 @@ export class TripsService {
         return {
           activityId: actObjectId,
           activityName: p.activityName.trim(),
+          startTime: p.startTime || standardSlots[pIdx % standardSlots.length],
           dayNumber: p.dayNumber || 1,
           orderIndex: p.orderIndex !== undefined ? p.orderIndex : pIdx,
           costOverride: p.costOverride !== undefined ? p.costOverride : null,
@@ -228,6 +273,7 @@ export class TripsService {
         return {
           activityId: actObjectId,
           activityName: item.activityName.trim(),
+          startTime: item.startTime || null,
           dayNumber: item.dayNumber || 1,
           orderIndex: item.orderIndex !== undefined ? item.orderIndex : idx,
           costOverride: item.costOverride !== undefined ? item.costOverride : null,
@@ -258,6 +304,22 @@ export class TripsService {
     );
     if (totalBudget > 0) {
       trip.totalBudgetEstimate = totalBudget;
+    }
+
+    // Adapt overall trip date range if stop dates extend it
+    const allStarts = trip.stops.map((s) => s.startDate).filter(Boolean).map((d) => new Date(d).getTime());
+    const allEnds = trip.stops.map((s) => s.endDate).filter(Boolean).map((d) => new Date(d).getTime());
+    if (allStarts.length > 0) {
+      const minStart = new Date(Math.min(...allStarts));
+      if (!trip.startDate || minStart < trip.startDate) {
+        trip.startDate = minStart;
+      }
+    }
+    if (allEnds.length > 0) {
+      const maxEnd = new Date(Math.max(...allEnds));
+      if (!trip.endDate || maxEnd > trip.endDate) {
+        trip.endDate = maxEnd;
+      }
     }
 
     const saved = await trip.save();
@@ -311,6 +373,7 @@ export class TripsService {
         return {
           activityId: actObjectId,
           activityName: item.activityName.trim(),
+          startTime: item.startTime || null,
           dayNumber: item.dayNumber || 1,
           orderIndex: item.orderIndex !== undefined ? item.orderIndex : idx,
           costOverride: item.costOverride !== undefined ? item.costOverride : null,
@@ -330,6 +393,22 @@ export class TripsService {
     );
     if (totalBudget > 0) {
       trip.totalBudgetEstimate = totalBudget;
+    }
+
+    // Adapt overall trip date range if stop dates extend it
+    const allStarts = trip.stops.map((s) => s.startDate).filter(Boolean).map((d) => new Date(d).getTime());
+    const allEnds = trip.stops.map((s) => s.endDate).filter(Boolean).map((d) => new Date(d).getTime());
+    if (allStarts.length > 0) {
+      const minStart = new Date(Math.min(...allStarts));
+      if (!trip.startDate || minStart < trip.startDate) {
+        trip.startDate = minStart;
+      }
+    }
+    if (allEnds.length > 0) {
+      const maxEnd = new Date(Math.max(...allEnds));
+      if (!trip.endDate || maxEnd > trip.endDate) {
+        trip.endDate = maxEnd;
+      }
     }
 
     const saved = await trip.save();
@@ -458,5 +537,346 @@ export class TripsService {
     }
 
     return this.deleteStop(trip._id.toString(), stopId, userId);
+  }
+
+  async addItineraryItem(
+    userId: string,
+    dto: CreateItineraryItemDto
+  ): Promise<Trip> {
+    const stopObjectId = Types.ObjectId.isValid(dto.stopId)
+      ? new Types.ObjectId(dto.stopId)
+      : null;
+
+    const trip = await this.tripModel.findOne({
+      $or: [
+        { "stops._id": stopObjectId },
+        { "stops.id": dto.stopId },
+      ],
+    }).exec();
+
+    if (!trip) {
+      throw new NotFoundException(`Stop with ID ${dto.stopId} not found.`);
+    }
+
+    if (trip.userId.toString() !== userId) {
+      throw new ForbiddenException("You do not have permission to modify this trip.");
+    }
+
+    const stop = trip.stops.find(
+      (s: any) =>
+        (s._id && s._id.toString() === dto.stopId) ||
+        s.id === dto.stopId ||
+        (stopObjectId && s._id && s._id.equals(stopObjectId))
+    );
+
+    if (!stop) {
+      throw new NotFoundException(`Stop with ID ${dto.stopId} not found.`);
+    }
+
+    const existingItems = stop.itineraryItems || [];
+
+    // Duplicate check
+    const isDuplicate = existingItems.some(
+      (item) =>
+        (item.activityName &&
+          item.activityName.trim().toLowerCase() === dto.activityName.trim().toLowerCase()) ||
+        (dto.activityId &&
+          item.activityId &&
+          item.activityId.toString() === dto.activityId)
+    );
+
+    if (isDuplicate) {
+      throw new ConflictException(
+        `Activity "${dto.activityName}" is already added to this destination.`
+      );
+    }
+
+    let actObjectId: Types.ObjectId | undefined = undefined;
+    if (dto.activityId && Types.ObjectId.isValid(dto.activityId)) {
+      actObjectId = new Types.ObjectId(dto.activityId);
+    }
+
+    const newItem = {
+      _id: new Types.ObjectId(),
+      activityId: actObjectId,
+      activityName: dto.activityName.trim(),
+      dayNumber: dto.dayNumber || 1,
+      startTime: dto.startTime || "08:30 AM",
+      orderIndex: dto.orderIndex !== undefined ? dto.orderIndex : existingItems.length,
+      costOverride: dto.costOverride !== undefined ? dto.costOverride : null,
+    };
+
+    stop.itineraryItems.push(newItem as any);
+    trip.markModified("stops");
+    const saved = await trip.save();
+    return saved;
+  }
+
+  async updateItineraryItem(
+    userId: string,
+    itemId: string,
+    dto: UpdateItineraryItemDto
+  ): Promise<Trip> {
+    const itemObjectId = Types.ObjectId.isValid(itemId)
+      ? new Types.ObjectId(itemId)
+      : null;
+
+    const trip = await this.tripModel.findOne({
+      $or: [
+        { "stops.itineraryItems._id": itemObjectId },
+        { "stops.itineraryItems.id": itemId },
+      ],
+    }).exec();
+
+    if (!trip) {
+      throw new NotFoundException(`Itinerary item with ID ${itemId} not found.`);
+    }
+
+    if (trip.userId.toString() !== userId) {
+      throw new ForbiddenException("You do not have permission to modify this trip.");
+    }
+
+    let foundItem: any = null;
+    for (const stop of trip.stops) {
+      if (stop.itineraryItems) {
+        foundItem = stop.itineraryItems.find(
+          (item: any) =>
+            (item._id && item._id.toString() === itemId) ||
+            item.id === itemId ||
+            (itemObjectId && item._id && item._id.equals(itemObjectId))
+        );
+        if (foundItem) break;
+      }
+    }
+
+    if (!foundItem) {
+      throw new NotFoundException(`Itinerary item with ID ${itemId} not found.`);
+    }
+
+    if (dto.activityName !== undefined) foundItem.activityName = dto.activityName.trim();
+    if (dto.dayNumber !== undefined) foundItem.dayNumber = dto.dayNumber;
+    if (dto.startTime !== undefined) foundItem.startTime = dto.startTime;
+    if (dto.orderIndex !== undefined) foundItem.orderIndex = dto.orderIndex;
+    if (dto.costOverride !== undefined) foundItem.costOverride = dto.costOverride;
+
+    trip.markModified("stops");
+    const saved = await trip.save();
+    return saved;
+  }
+
+  async deleteItineraryItem(
+    userId: string,
+    itemId: string
+  ): Promise<Trip> {
+    const itemObjectId = Types.ObjectId.isValid(itemId)
+      ? new Types.ObjectId(itemId)
+      : null;
+
+    const trip = await this.tripModel.findOne({
+      $or: [
+        { "stops.itineraryItems._id": itemObjectId },
+        { "stops.itineraryItems.id": itemId },
+      ],
+    }).exec();
+
+    if (!trip) {
+      throw new NotFoundException(`Itinerary item with ID ${itemId} not found.`);
+    }
+
+    if (trip.userId.toString() !== userId) {
+      throw new ForbiddenException("You do not have permission to modify this trip.");
+    }
+
+    let removed = false;
+    for (const stop of trip.stops) {
+      if (stop.itineraryItems) {
+        const initialLen = stop.itineraryItems.length;
+        stop.itineraryItems = stop.itineraryItems.filter(
+          (item: any) =>
+            item._id?.toString() !== itemId &&
+            item.id !== itemId &&
+            (!itemObjectId || !item._id || !item._id.equals(itemObjectId))
+        ) as any;
+        if (stop.itineraryItems.length < initialLen) {
+          removed = true;
+          // Re-index remaining items
+          stop.itineraryItems.forEach((it: any, idx: number) => {
+            it.orderIndex = idx;
+          });
+          break;
+        }
+      }
+    }
+
+    if (!removed) {
+      throw new NotFoundException(`Itinerary item with ID ${itemId} not found.`);
+    }
+
+    trip.markModified("stops");
+    const saved = await trip.save();
+    return saved;
+  }
+
+  async reorderItineraryItems(
+    userId: string,
+    stopId: string,
+    itemIds: string[]
+  ): Promise<Trip> {
+    const stopObjectId = Types.ObjectId.isValid(stopId)
+      ? new Types.ObjectId(stopId)
+      : null;
+
+    const trip = await this.tripModel.findOne({
+      $or: [
+        { "stops._id": stopObjectId },
+        { "stops.id": stopId },
+      ],
+    }).exec();
+
+    if (!trip) {
+      throw new NotFoundException(`Stop with ID ${stopId} not found.`);
+    }
+
+    if (trip.userId.toString() !== userId) {
+      throw new ForbiddenException("You do not have permission to modify this trip.");
+    }
+
+    const stop = trip.stops.find(
+      (s: any) =>
+        (s._id && s._id.toString() === stopId) ||
+        s.id === stopId ||
+        (stopObjectId && s._id && s._id.equals(stopObjectId))
+    );
+
+    if (!stop || !stop.itineraryItems) {
+      throw new NotFoundException(`Stop with ID ${stopId} not found.`);
+    }
+
+    const itemMap = new Map<string, any>();
+    stop.itineraryItems.forEach((it: any) => {
+      const key = it._id?.toString() || it.id;
+      if (key) itemMap.set(key, it);
+    });
+
+    const reordered: any[] = [];
+    itemIds.forEach((id, idx) => {
+      const item = itemMap.get(id);
+      if (item) {
+        item.orderIndex = idx;
+        reordered.push(item);
+        itemMap.delete(id);
+      }
+    });
+
+    // Append any remainder
+    itemMap.forEach((item) => {
+      item.orderIndex = reordered.length;
+      reordered.push(item);
+    });
+
+    stop.itineraryItems = reordered as any;
+    trip.markModified("stops");
+    const saved = await trip.save();
+    return saved;
+  }
+
+  async generateShareToken(
+    userId: string,
+    tripId: string
+  ): Promise<{ shareToken: string; shareUrl: string; trip: Trip }> {
+    if (!Types.ObjectId.isValid(tripId)) {
+      throw new BadRequestException("Invalid trip ID format.");
+    }
+
+    const trip = await this.tripModel.findById(tripId).exec();
+    if (!trip) {
+      throw new NotFoundException(`Trip with ID ${tripId} not found.`);
+    }
+
+    if (trip.userId.toString() !== userId) {
+      throw new ForbiddenException("You do not have permission to share this trip.");
+    }
+
+    if (!trip.shareToken) {
+      // Generate clean 24-char hex opaque token
+      const token = crypto.randomBytes(12).toString("hex");
+      trip.shareToken = token;
+    }
+
+    trip.visibility = Visibility.PUBLIC;
+    await trip.save();
+
+    return {
+      shareToken: trip.shareToken,
+      shareUrl: `/share/${trip.shareToken}`,
+      trip,
+    };
+  }
+
+  async getPublicTripByToken(shareToken: string): Promise<any> {
+    if (!shareToken || shareToken.trim() === "") {
+      throw new NotFoundException("This itinerary is no longer available.");
+    }
+
+    const trip = await this.tripModel
+      .findOne({ shareToken: shareToken.trim(), visibility: Visibility.PUBLIC })
+      .populate("userId", "firstName lastName username photoUrl")
+      .exec();
+
+    if (!trip) {
+      throw new NotFoundException("This itinerary is no longer available.");
+    }
+
+    return trip;
+  }
+
+  async copyPublicTrip(userId: string, shareToken: string): Promise<Trip> {
+    if (!shareToken || shareToken.trim() === "") {
+      throw new NotFoundException("This itinerary is no longer available.");
+    }
+
+    const sourceTrip = await this.tripModel
+      .findOne({ shareToken: shareToken.trim(), visibility: Visibility.PUBLIC })
+      .exec();
+
+    if (!sourceTrip) {
+      throw new NotFoundException("This itinerary is no longer available.");
+    }
+
+    // Clone stops and itinerary items with new ObjectIds
+    const clonedStops = (sourceTrip.stops || []).map((stop, sIdx) => ({
+      cityId: stop.cityId,
+      cityName: stop.cityName,
+      country: stop.country,
+      orderIndex: stop.orderIndex ?? sIdx,
+      startDate: stop.startDate,
+      endDate: stop.endDate,
+      sectionBudget: stop.sectionBudget,
+      notes: stop.notes,
+      itineraryItems: (stop.itineraryItems || []).map((item, iIdx) => ({
+        activityId: item.activityId,
+        activityName: item.activityName,
+        dayNumber: item.dayNumber || 1,
+        startTime: item.startTime,
+        orderIndex: item.orderIndex ?? iIdx,
+        costOverride: item.costOverride,
+      })),
+    }));
+
+    const newTrip = new this.tripModel({
+      userId: new Types.ObjectId(userId),
+      name: `${sourceTrip.name} (Copy)`,
+      description: sourceTrip.description,
+      coverPhotoUrl: sourceTrip.coverPhotoUrl,
+      startDate: sourceTrip.startDate,
+      endDate: sourceTrip.endDate,
+      status: TripStatus.PLANNED,
+      visibility: Visibility.PRIVATE,
+      totalBudgetEstimate: sourceTrip.totalBudgetEstimate,
+      stops: clonedStops,
+    });
+
+    const saved = await newTrip.save();
+    return saved;
   }
 }

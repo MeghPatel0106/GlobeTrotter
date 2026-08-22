@@ -77,6 +77,7 @@ export interface Trip {
   status: string;
   visibility: string;
   totalBudgetEstimate?: number;
+  shareToken?: string;
   stops: Stop[];
   createdAt: string;
   updatedAt: string;
@@ -348,15 +349,71 @@ export const citiesApi = {
         country ? `&country=${encodeURIComponent(country)}` : ""
       }`
     ),
+  searchExternal: (country: string, query: string, limit = 15) =>
+    apiFetch<string[]>(
+      `/cities/external-search?country=${encodeURIComponent(country)}&q=${encodeURIComponent(query)}&limit=${limit}`
+    ),
   getById: (id: string) => apiFetch<City>(`/cities/${id}`),
-  getActivities: (cityId: string, top = 6) =>
-    apiFetch<Activity[]>(`/cities/${cityId}/activities?top=${top}`),
+  getActivities: (
+    cityId: string,
+    topOrOptions?:
+      | number
+      | {
+          top?: number;
+          q?: string;
+          category?: string;
+          maxCost?: number;
+          cityName?: string;
+        }
+  ) => {
+    const params = new URLSearchParams();
+    if (typeof topOrOptions === "number") {
+      params.set("top", String(topOrOptions));
+    } else if (topOrOptions) {
+      if (topOrOptions.top) params.set("top", String(topOrOptions.top));
+      if (topOrOptions.q) params.set("q", topOrOptions.q);
+      if (topOrOptions.category && topOrOptions.category !== "all")
+        params.set("category", topOrOptions.category);
+      if (topOrOptions.maxCost !== undefined)
+        params.set("maxCost", String(topOrOptions.maxCost));
+      if (topOrOptions.cityName) params.set("cityName", topOrOptions.cityName);
+    }
+
+    const qs = params.toString();
+    return apiFetch<Activity[]>(`/cities/${cityId || "query"}/activities${qs ? `?${qs}` : ""}`);
+  },
 };
 
 export const tripsApi = {
   getUserTrips: (limit = 10, sort = "recent") =>
     apiFetch<Trip[]>(`/trips?limit=${limit}&sort=${sort}`),
+  getCalendarTrips: (month?: number, year?: number) =>
+    apiFetch<Trip[]>(
+      `/trips?limit=100&sort=start_date${month ? `&month=${month}` : ""}${
+        year ? `&year=${year}` : ""
+      }`
+    ),
   getById: (id: string) => apiFetch<Trip>(`/trips/${id}`),
+  shareTrip: (tripId: string) =>
+    apiFetch<{ shareToken: string; shareUrl: string; trip: Trip }>(
+      `/trips/${tripId}/share`,
+      { method: "POST" }
+    ),
+  getPublicTrip: (token: string) =>
+    apiFetch<
+      Trip & {
+        userId?: {
+          firstName?: string;
+          lastName?: string;
+          username?: string;
+          photoUrl?: string;
+        };
+      }
+    >(`/trips/share/${token}`),
+  copyPublicTrip: (token: string) =>
+    apiFetch<Trip>(`/trips/share/${token}/copy`, {
+      method: "POST",
+    }),
   createTrip: (data: CreateTripInput) =>
     apiFetch<Trip>("/trips", {
       method: "POST",
@@ -394,3 +451,155 @@ export const stopsApi = {
       method: "DELETE",
     }),
 };
+
+export interface CreateItineraryItemInput {
+  stopId: string;
+  activityId?: string;
+  activityName: string;
+  dayNumber?: number;
+  startTime?: string;
+  orderIndex?: number;
+  costOverride?: number;
+}
+
+export interface UpdateItineraryItemInput {
+  activityName?: string;
+  dayNumber?: number;
+  startTime?: string;
+  orderIndex?: number;
+  costOverride?: number;
+}
+
+export const itineraryItemsApi = {
+  create: (data: CreateItineraryItemInput) =>
+    apiFetch<Trip>("/itinerary-items", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (itemId: string, data: UpdateItineraryItemInput) =>
+    apiFetch<Trip>(`/itinerary-items/${itemId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  delete: (itemId: string) =>
+    apiFetch<Trip>(`/itinerary-items/${itemId}`, {
+      method: "DELETE",
+    }),
+  reorder: (stopId: string, itemIds: string[]) =>
+    apiFetch<Trip>("/itinerary-items/reorder", {
+      method: "PATCH",
+      body: JSON.stringify({ stopId, itemIds }),
+    }),
+};
+
+export type ExpenseCategory = "TRANSPORT" | "STAY" | "ACTIVITY" | "MEAL" | "OTHER";
+
+export interface Expense {
+  id: string;
+  tripId: string;
+  stopId?: string;
+  dayNumber?: number;
+  category: ExpenseCategory;
+  amount: number;
+  currency: string;
+  date?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateExpenseInput {
+  tripId?: string;
+  stopId?: string;
+  dayNumber?: number;
+  category: ExpenseCategory;
+  amount: number;
+  currency?: string;
+  date?: string;
+  notes?: string;
+}
+
+export interface UpdateExpenseInput {
+  category?: ExpenseCategory;
+  amount?: number;
+  currency?: string;
+  date?: string;
+  dayNumber?: number;
+  stopId?: string;
+  notes?: string;
+}
+
+export const expensesApi = {
+  getTripExpenses: (tripId: string) =>
+    apiFetch<Expense[]>(`/trips/${tripId}/expenses`),
+  create: (tripId: string, data: CreateExpenseInput) =>
+    apiFetch<Expense>(`/trips/${tripId}/expenses`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (expenseId: string, data: UpdateExpenseInput) =>
+    apiFetch<Expense>(`/expenses/${expenseId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  delete: (expenseId: string) =>
+    apiFetch<{ success: boolean; id: string }>(`/expenses/${expenseId}`, {
+      method: "DELETE",
+    }),
+};
+
+/* ==========================================================================
+   Admin Analytics API Interfaces & Client
+   ========================================================================== */
+
+export interface AdminSummary {
+  totalUsers: number;
+  totalTrips: number;
+  totalPublicTrips: number;
+  totalActivitiesPlanned: number;
+  totalExpensesRecorded: number;
+}
+
+export interface AdminUserItem {
+  id: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
+  phone?: string | null;
+  photoUrl?: string | null;
+  role: "USER" | "ADMIN";
+  tripsCount: number;
+  createdAt: string;
+}
+
+export interface AdminCityStat {
+  cityName: string;
+  country: string;
+  visitCount: number;
+  totalBudgetPlanned: number;
+}
+
+export interface AdminActivityStat {
+  activityName: string;
+  category?: string;
+  count: number;
+  averageCost: number;
+}
+
+export interface AdminTrendPoint {
+  period: string;
+  usersCount: number;
+  tripsCount: number;
+}
+
+export const adminApi = {
+  getSummary: () => apiFetch<AdminSummary>("/admin/analytics/summary"),
+  getUsers: () => apiFetch<AdminUserItem[]>("/admin/users"),
+  getPopularCities: (limit = 10) =>
+    apiFetch<AdminCityStat[]>(`/admin/analytics/cities?limit=${limit}`),
+  getPopularActivities: (limit = 10) =>
+    apiFetch<AdminActivityStat[]>(`/admin/analytics/activities?limit=${limit}`),
+  getTrends: () => apiFetch<AdminTrendPoint[]>("/admin/analytics/trends"),
+};
+

@@ -10,6 +10,20 @@ export class CitiesController {
     return this.citiesService.getDistinctCountries();
   }
 
+  @Get("external-search")
+  async searchExternalCities(
+    @Query("country") country: string,
+    @Query("q") query?: string,
+    @Query("limit") limit?: string
+  ) {
+    const numLimit = limit ? parseInt(limit, 10) : 15;
+    return this.citiesService.searchExternalCities(
+      country || "",
+      query || "",
+      numLimit
+    );
+  }
+
   @Get("top")
   async getTopCities(
     @Query("limit") limit?: string,
@@ -32,10 +46,22 @@ export class CitiesController {
   @Get(":id/activities")
   async getActivitiesForCity(
     @Param("id") cityId: string,
-    @Query("top") top?: string
+    @Query("top") top?: string,
+    @Query("q") query?: string,
+    @Query("category") category?: string,
+    @Query("maxCost") maxCost?: string,
+    @Query("cityName") cityName?: string
   ) {
-    const numTop = top ? parseInt(top, 10) : 6;
-    return this.citiesService.getActivitiesForCity(cityId, numTop);
+    const numTop = top ? parseInt(top, 10) : 20;
+    const numMaxCost = maxCost ? parseFloat(maxCost) : undefined;
+    return this.citiesService.getActivitiesForCity(
+      cityId,
+      numTop,
+      query,
+      category,
+      numMaxCost,
+      cityName
+    );
   }
 
   @Get(":id")

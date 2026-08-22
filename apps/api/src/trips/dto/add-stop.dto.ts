@@ -13,11 +13,23 @@ import { Type } from "class-transformer";
 export class StopItineraryItemDto {
   @IsString()
   @IsOptional()
+  id?: string;
+
+  @IsString()
+  @IsOptional()
+  _id?: string;
+
+  @IsString()
+  @IsOptional()
   activityId?: string;
 
   @IsString()
   @IsNotEmpty({ message: "Activity/place name is required." })
   activityName: string;
+
+  @IsString()
+  @IsOptional()
+  startTime?: string;
 
   @IsNumber()
   @IsOptional()
