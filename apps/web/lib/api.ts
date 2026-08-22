@@ -54,6 +54,7 @@ export interface ItineraryItem {
 
 export interface Stop {
   id?: string;
+  _id?: string;
   cityId?: string;
   cityName: string;
   country: string;
@@ -85,13 +86,40 @@ export interface CreateTripInput {
   name: string;
   startDate: string;
   endDate: string;
+  cities?: Array<{
+    cityId?: string;
+    cityName: string;
+    country: string;
+    sectionBudget?: number;
+    notes?: string;
+  }>;
   cityId?: string;
-  cityName: string;
-  country: string;
+  cityName?: string;
+  country?: string;
   sectionBudget?: number;
   notes?: string;
   description?: string;
   coverPhotoUrl?: string;
+}
+
+export interface AddStopInput {
+  cityId?: string;
+  cityName: string;
+  country: string;
+  startDate?: string;
+  endDate?: string;
+  sectionBudget?: number;
+  notes?: string;
+}
+
+export interface UpdateStopInput {
+  cityId?: string;
+  cityName?: string;
+  country?: string;
+  startDate?: string;
+  endDate?: string;
+  sectionBudget?: number;
+  notes?: string;
 }
 
 export interface AuthResponse {
@@ -295,5 +323,36 @@ export const tripsApi = {
     apiFetch<Trip>("/trips", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+  addStop: (tripId: string, data: AddStopInput) =>
+    apiFetch<Trip>(`/trips/${tripId}/stops`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateStop: (tripId: string, stopId: string, data: UpdateStopInput) =>
+    apiFetch<Trip>(`/trips/${tripId}/stops/${stopId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  deleteStop: (tripId: string, stopId: string) =>
+    apiFetch<Trip>(`/trips/${tripId}/stops/${stopId}`, {
+      method: "DELETE",
+    }),
+  reorderStops: (tripId: string, stopIds: string[]) =>
+    apiFetch<Trip>(`/trips/${tripId}/stops/reorder`, {
+      method: "PATCH",
+      body: JSON.stringify({ stopIds }),
+    }),
+};
+
+export const stopsApi = {
+  update: (stopId: string, data: UpdateStopInput) =>
+    apiFetch<Trip>(`/stops/${stopId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  delete: (stopId: string) =>
+    apiFetch<Trip>(`/stops/${stopId}`, {
+      method: "DELETE",
     }),
 };

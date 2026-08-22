@@ -55,7 +55,7 @@ export default function DashboardPage() {
     refetch: refetchCities,
   } = useQuery({
     queryKey: ["cities", "top"],
-    queryFn: () => citiesApi.getTop(6),
+    queryFn: () => citiesApi.getTop(24),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -88,10 +88,11 @@ export default function DashboardPage() {
 
     if (filterRegion !== "all") {
       result = result.filter((c) => {
-        if (filterRegion === "asia") return ["Japan", "India", "Thailand"].includes(c.country);
-        if (filterRegion === "europe") return ["Italy", "Spain", "Iceland", "France"].includes(c.country);
-        if (filterRegion === "americas") return ["Mexico", "USA", "Argentina"].includes(c.country);
-        if (filterRegion === "africa") return ["South Africa", "Morocco"].includes(c.country);
+        if (filterRegion === "india") return c.country.toLowerCase() === "india";
+        if (filterRegion === "asia") return ["japan", "thailand", "indonesia"].includes(c.country.toLowerCase());
+        if (filterRegion === "europe") return ["italy", "spain", "iceland", "france"].includes(c.country.toLowerCase());
+        if (filterRegion === "americas") return ["mexico", "usa"].includes(c.country.toLowerCase());
+        if (filterRegion === "africa") return ["south africa", "egypt", "united arab emirates"].includes(c.country.toLowerCase());
         return true;
       });
     }
@@ -352,10 +353,11 @@ export default function DashboardPage() {
               className="w-full h-10 px-3 rounded-[8px] bg-input-bg border border-input-border text-xs sm:text-sm text-foreground focus:outline-none focus:border-primary transition-colors cursor-pointer"
             >
               <option value="all">All Regions</option>
+              <option value="india">Incredible India</option>
               <option value="asia">Asia & Pacific</option>
               <option value="europe">Europe</option>
               <option value="americas">Americas</option>
-              <option value="africa">Africa</option>
+              <option value="africa">Africa & Middle East</option>
             </select>
           </div>
 
@@ -430,7 +432,7 @@ export default function DashboardPage() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
           >
             {displayedCities.map((city) => {
-              const costBadges = Array.from({ length: city.costIndex || 3 }, () => "$").join("");
+              const costBadges = Array.from({ length: city.costIndex || 3 }, () => "₹").join("");
 
               return (
                 <MotionFadeRise key={city.id}>
@@ -443,6 +445,9 @@ export default function DashboardPage() {
                           src={city.imageUrl}
                           alt={city.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = "none";
+                          }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
                         <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs border border-white/20 text-white text-[11px] font-mono font-medium">

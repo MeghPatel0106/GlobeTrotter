@@ -2,6 +2,9 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Put,
+  Delete,
   Body,
   Param,
   Query,
@@ -9,6 +12,7 @@ import {
 } from "@nestjs/common";
 import { TripsService } from "./trips.service";
 import { CreateTripDto } from "./dto/create-trip.dto";
+import { AddStopDto, UpdateStopDto, ReorderStopsDto } from "./dto/add-stop.dto";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
@@ -41,5 +45,51 @@ export class TripsController {
     @Param("id") tripId: string
   ) {
     return this.tripsService.getTripById(tripId, userId);
+  }
+
+  @Post(":id/stops")
+  async addStop(
+    @CurrentUser("id") userId: string,
+    @Param("id") tripId: string,
+    @Body() dto: AddStopDto
+  ) {
+    return this.tripsService.addStop(tripId, userId, dto);
+  }
+
+  @Put(":id/stops/reorder")
+  async reorderStopsPut(
+    @CurrentUser("id") userId: string,
+    @Param("id") tripId: string,
+    @Body() dto: ReorderStopsDto
+  ) {
+    return this.tripsService.reorderStops(tripId, userId, dto.stopIds);
+  }
+
+  @Patch(":id/stops/reorder")
+  async reorderStopsPatch(
+    @CurrentUser("id") userId: string,
+    @Param("id") tripId: string,
+    @Body() dto: ReorderStopsDto
+  ) {
+    return this.tripsService.reorderStops(tripId, userId, dto.stopIds);
+  }
+
+  @Patch(":id/stops/:stopId")
+  async updateStop(
+    @CurrentUser("id") userId: string,
+    @Param("id") tripId: string,
+    @Param("stopId") stopId: string,
+    @Body() dto: UpdateStopDto
+  ) {
+    return this.tripsService.updateStop(tripId, stopId, userId, dto);
+  }
+
+  @Delete(":id/stops/:stopId")
+  async deleteStop(
+    @CurrentUser("id") userId: string,
+    @Param("id") tripId: string,
+    @Param("stopId") stopId: string
+  ) {
+    return this.tripsService.deleteStop(tripId, stopId, userId);
   }
 }

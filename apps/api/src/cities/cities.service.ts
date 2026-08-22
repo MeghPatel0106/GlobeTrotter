@@ -11,7 +11,7 @@ export class CitiesService {
     @InjectModel(Activity.name) private activityModel: Model<ActivityDocument>
   ) {}
 
-  async getTopCities(limit = 5): Promise<City[]> {
+  async getTopCities(limit = 24): Promise<City[]> {
     return this.cityModel
       .find()
       .sort({ popularityScore: -1 })
@@ -19,17 +19,43 @@ export class CitiesService {
       .exec();
   }
 
-  async searchCities(query: string, limit = 10): Promise<City[]> {
+  async searchCities(query: string, limit = 20): Promise<City[]> {
     if (!query || query.trim().length === 0) {
-      return this.cityModel.find().limit(limit).exec();
+      return this.cityModel.find().sort({ popularityScore: -1 }).limit(limit).exec();
     }
 
     const cleanQuery = query.trim();
     const regex = new RegExp(cleanQuery, "i");
 
+    // Common aliases & historical spelling variations
+    const aliases: Record<string, string[]> = {
+      bombay: ["mumbai"],
+      calcutta: ["kolkata"],
+      madras: ["chennai"],
+      banaras: ["varanasi"],
+      kashi: ["varanasi"],
+      bangalore: ["bengaluru"],
+      amdavad: ["ahmedabad"],
+      cochin: ["kochi"],
+      mysore: ["mysuru"],
+      panjim: ["goa"],
+      panaji: ["goa"],
+      pondicherry: ["puducherry", "pondicherry"],
+      puducherry: ["pondicherry", "puducherry"],
+    };
+
+    const lowerQuery = cleanQuery.toLowerCase();
+    const aliasMatches = aliases[lowerQuery] || [];
+    const aliasRegexes = aliasMatches.map((a) => new RegExp(a, "i"));
+
     return this.cityModel
       .find({
-        $or: [{ name: regex }, { country: regex }],
+        $or: [
+          { name: regex },
+          { country: regex },
+          { description: regex },
+          ...aliasRegexes.map((r) => ({ name: r })),
+        ],
       })
       .sort({ popularityScore: -1 })
       .limit(limit)

@@ -3,6 +3,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { Trip, TripSchema } from "../schemas/trip.schema";
 import { City, CitySchema } from "../schemas/city.schema";
 import { TripsController } from "./trips.controller";
+import { StopsController } from "./stops.controller";
 import { TripsService } from "./trips.service";
 
 @Module({
@@ -12,7 +13,7 @@ import { TripsService } from "./trips.service";
       { name: City.name, schema: CitySchema },
     ]),
   ],
-  controllers: [TripsController],
+  controllers: [TripsController, StopsController],
   providers: [TripsService],
   exports: [TripsService],
 })
